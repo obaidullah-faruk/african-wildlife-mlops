@@ -36,3 +36,19 @@ def test_environment_secret_is_redacted(tmp_path: Path, monkeypatch: pytest.Monk
     config = load_config(config_path)
 
     assert config.redacted()["environment"]["api_token"] == "********"
+
+
+def test_cuda_is_an_allowed_requested_device(tmp_path: Path) -> None:
+    config_path = tmp_path / "project.yaml"
+    config_path.write_text(
+        "project_name: test\n"
+        "classes: [buffalo]\n"
+        "runtime:\n"
+        "  requested_device: cuda\n"
+        "  minimum_free_disk_gib: 20\n",
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert config.project.runtime.requested_device == "cuda"

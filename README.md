@@ -12,6 +12,7 @@ make bootstrap
 
 ```sh
 make doctor
+make device-info
 make lint
 make typecheck
 make test

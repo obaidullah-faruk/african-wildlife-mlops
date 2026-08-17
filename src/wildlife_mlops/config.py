@@ -15,7 +15,7 @@ class RuntimeConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    requested_device: str = Field(pattern="^(auto|mps|cpu)$")
+    requested_device: str = Field(pattern="^(auto|mps|cuda|cpu)$")
     minimum_free_disk_gib: int = Field(gt=0)
 
 

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from wildlife_mlops.config import ProjectConfig
+from wildlife_mlops.device import select_device
 
 
 @dataclass(frozen=True)
@@ -19,9 +20,9 @@ class CheckResult:
     detail: str
 
 
-def choose_device(mps_available: bool) -> str:
-    """Choose the native accelerator when it is available, otherwise CPU."""
-    return "mps" if mps_available else "cpu"
+def choose_device(mps_available: bool, cuda_available: bool = False) -> str:
+    """Choose MPS first, then CUDA, and otherwise CPU."""
+    return select_device("auto", mps_available, cuda_available)
 
 
 def run_doctor(config: ProjectConfig, project_root: Path) -> list[CheckResult]:
@@ -60,9 +61,11 @@ def _check_torch() -> CheckResult:
         return CheckResult("PyTorch MPS", False, "PyTorch is not installed; run make bootstrap")
 
     mps_available = torch.backends.mps.is_available()
-    device = choose_device(mps_available)
+    cuda_available = torch.cuda.is_available()
+    device = choose_device(mps_available, cuda_available)
     return CheckResult(
         "PyTorch MPS",
         True,
-        f"torch.backends.mps.is_available()={mps_available}; chosen device={device}",
+        "torch.backends.mps.is_available()="
+        f"{mps_available}; torch.cuda.is_available()={cuda_available}; chosen device={device}",
     )

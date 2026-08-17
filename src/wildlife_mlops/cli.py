@@ -13,6 +13,7 @@ from wildlife_mlops.data.download import DatasetDownloadError, download_and_extr
 from wildlife_mlops.data.inventory import create_inventory, create_smoke_manifest
 from wildlife_mlops.data.validate import validate_dataset, write_validation_report
 from wildlife_mlops.data.visualize import create_contact_sheets
+from wildlife_mlops.device import DeviceSelectionError, collect_device_summary
 from wildlife_mlops.doctor import run_doctor
 from wildlife_mlops.pretrained import (
     PretrainedInferenceError,
@@ -39,6 +40,15 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("doctor", help="Run read-only local environment checks.")
     subparsers.add_parser("show-config", help="Print the resolved, redacted configuration.")
+    device_parser = subparsers.add_parser(
+        "device-info", help="Print the selected device and runtime details."
+    )
+    device_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this command.",
+    )
     subparsers.add_parser(
         "data-download", help="Download and extract the checksum-verified dataset."
     )
@@ -78,6 +88,17 @@ def main() -> int:
             state = "PASS" if result.passed else "FAIL"
             print(f"{state}: {result.name}: {result.detail}")
         return 0 if all(result.passed for result in results) else 1
+
+    if args.command == "device-info":
+        requested_device = args.device or config.project.runtime.requested_device
+        try:
+            summary = collect_device_summary(requested_device)
+        except (DeviceSelectionError, ImportError) as error:
+            print(f"Device selection failed: {error}")
+            return 1
+        print("Device runtime summary:")
+        print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
+        return 0
 
     try:
         data_config = load_dataset_config(args.data_config)
