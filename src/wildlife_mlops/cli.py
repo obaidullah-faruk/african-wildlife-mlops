@@ -28,6 +28,7 @@ from wildlife_mlops.overfit import (
     load_overfit_config,
     run_overfit_diagnostic,
 )
+from wildlife_mlops.predict import PredictionError, predict_image
 from wildlife_mlops.pretrained import (
     PretrainedInferenceError,
     load_pretrained_config,
@@ -153,6 +154,14 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
         help="Override runtime.requested_device for this evaluation.",
+    )
+    prediction_parser = subparsers.add_parser(
+        "predict", help="Predict one JPEG or PNG with one local .pt checkpoint."
+    )
+    prediction_parser.add_argument("--model", type=Path, required=True, help="Model checkpoint.")
+    prediction_parser.add_argument("--image", type=Path, required=True, help="Input JPEG or PNG.")
+    prediction_parser.add_argument(
+        "--output", type=Path, required=True, help="New JSON prediction output path."
     )
     subparsers.add_parser(
         "data-download", help="Download and extract the checksum-verified dataset."
@@ -336,12 +345,23 @@ def main() -> int:
                 getattr(ultralytics, "YOLO"),
             )
             print(f"Wrote sealed-test release artifacts: {evaluation_dir}")
+        elif args.command == "predict":
+            import ultralytics
+
+            output_path = predict_image(
+                args.model,
+                args.image,
+                args.output,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote prediction: {output_path}")
     except (
         DatasetDownloadError,
         BaselineError,
         ImportError,
         OSError,
         OverfitDiagnosticError,
+        PredictionError,
         PretrainedInferenceError,
         SmokeTrainError,
         ValueError,

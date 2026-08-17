@@ -40,6 +40,24 @@ make data-smoke-manifest
 make predict-pretrained
 ```
 
+## Single-image prediction
+
+```sh
+make predict \
+  MODEL=artifacts/experiment/<run>/weights/best.pt \
+  IMAGE=data/raw/african-wildlife/images/val/<image>.jpg \
+  OUTPUT=artifacts/predictions/<image>.json
+
+  # Sample
+make predict \
+  MODEL=artifacts/experiment/experiment-20260817T185952Z-2fdb4d0f/weights/best.pt \
+  IMAGE='data/raw/african-wildlife/images/val/1 (288).jpg' \
+  OUTPUT=artifacts/predictions/zebra-prediction.json
+```
+
+The command accepts JPEG and PNG inputs, validates image decoding, and refuses to
+overwrite an existing output. Each result records the model version and SHA-256.
+
 ## Baseline evaluation
 
 ```sh
@@ -70,6 +88,7 @@ frozen selection and refuses a second test evaluation for it.
     }
   ],
   "model_version": "immutable-model-identifier",
+  "model_sha256": "immutable-model-checksum",
   "trace_id": "request-trace-identifier",
   "timestamp": "2026-08-17T12:00:00Z"
 }

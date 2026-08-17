@@ -2,7 +2,7 @@ UV := uv
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -68,3 +68,7 @@ data-smoke-manifest:
 
 predict-pretrained:
 	$(UV) run wildlife-mlops predict-pretrained
+
+predict:
+	@test -n "$(MODEL)" && test -n "$(IMAGE)" && test -n "$(OUTPUT)" || (echo "MODEL, IMAGE, and OUTPUT are required"; exit 2)
+	$(UV) run wildlife-mlops predict --model "$(MODEL)" --image "$(IMAGE)" --output "$(OUTPUT)"
