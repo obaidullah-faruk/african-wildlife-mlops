@@ -16,6 +16,8 @@ make device-info
 make train-overfit
 make train-smoke
 make train-baseline
+make run-experiment BASELINE_RUN=artifacts/baseline/<run-directory>
+make evaluate-release-test
 make lint
 make typecheck
 make test
@@ -47,6 +49,10 @@ make evaluate-baseline RUN_DIR=artifacts/baseline/<run-directory>
 `weights/best.pt` is selected by validation mAP50-95, not by the final epoch.
 More epochs are useful only while validation quality improves; falling training loss
 alongside plateauing or declining validation quality is evidence of overfitting.
+
+`run-experiment` changes only the configured image size, compares the same validation
+metric, and freezes the selected checkpoint. `evaluate-release-test` accepts only that
+frozen selection and refuses a second test evaluation for it.
 
 ## Prediction schema
 

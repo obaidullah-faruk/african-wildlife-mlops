@@ -9,8 +9,10 @@ from pathlib import Path
 from wildlife_mlops.baseline import (
     BaselineError,
     evaluate_baseline,
+    evaluate_selected_baseline_on_test,
     load_baseline_config,
     run_baseline_train,
+    run_controlled_experiment,
 )
 from wildlife_mlops.config import load_config
 from wildlife_mlops.data.audit import audit_splits
@@ -113,6 +115,40 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-dir", type=Path, required=True, help="Baseline run directory."
     )
     evaluation_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this evaluation.",
+    )
+    experiment_parser = subparsers.add_parser(
+        "run-experiment", help="Train one controlled image-size experiment and compare it."
+    )
+    experiment_parser.add_argument(
+        "--baseline-run", type=Path, required=True, help="Control baseline run directory."
+    )
+    experiment_parser.add_argument(
+        "--train-config",
+        type=Path,
+        default=Path("configs/train/baseline-image-192.yaml"),
+        help="Experiment configuration; it must differ only in image_size.",
+    )
+    experiment_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this experiment.",
+    )
+    test_evaluation_parser = subparsers.add_parser(
+        "evaluate-release-test",
+        help="Evaluate the frozen selected baseline once on the sealed test split.",
+    )
+    test_evaluation_parser.add_argument(
+        "--release-artifact",
+        type=Path,
+        default=Path("artifacts/releases/selected-baseline.json"),
+        help="Frozen selected-baseline release artifact.",
+    )
+    test_evaluation_parser.add_argument(
         "--device",
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
@@ -268,6 +304,38 @@ def main() -> int:
                 getattr(ultralytics, "YOLO"),
             )
             print(f"Wrote validation evaluation artifacts: {evaluation_dir}")
+        elif args.command == "run-experiment":
+            experiment_config = load_baseline_config(args.train_config)
+            device_summary = collect_device_summary(
+                args.device or config.project.runtime.requested_device
+            )
+            import ultralytics
+
+            experiment_run, comparison_path, release_path = run_controlled_experiment(
+                args.baseline_run,
+                experiment_config,
+                data_config,
+                Path.cwd(),
+                device_summary,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote controlled experiment artifacts: {experiment_run}")
+            print(f"Wrote comparison: {comparison_path}")
+            print(f"Froze selected baseline: {release_path}")
+        elif args.command == "evaluate-release-test":
+            device_summary = collect_device_summary(
+                args.device or config.project.runtime.requested_device
+            )
+            import ultralytics
+
+            evaluation_dir = evaluate_selected_baseline_on_test(
+                args.release_artifact,
+                Path.cwd(),
+                data_config,
+                device_summary,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote sealed-test release artifacts: {evaluation_dir}")
     except (
         DatasetDownloadError,
         BaselineError,

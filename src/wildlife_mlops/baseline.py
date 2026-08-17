@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import platform
 import resource
@@ -85,11 +86,30 @@ def run_baseline_train(
     model_factory: Callable[[str], Any],
 ) -> Path:
     """Train the first baseline and save reproducible runtime and curve artifacts."""
+    return _run_training(
+        config,
+        dataset_config,
+        project_root,
+        device_summary,
+        model_factory,
+        run_prefix="baseline",
+    )
+
+
+def _run_training(
+    config: BaselineConfig,
+    dataset_config: DatasetConfig,
+    project_root: Path,
+    device_summary: DeviceSummary,
+    model_factory: Callable[[str], Any],
+    run_prefix: str,
+) -> Path:
+    """Train one full-data configuration and save its evidence in a unique directory."""
     model_path = project_root / config.model_path
     if not model_path.is_file() or model_path.stat().st_size == 0:
         raise BaselineError(f"Pretrained model is missing or empty: {model_path}")
     _validate_validation_split(config.validation_split, dataset_config)
-    run_dir = _create_run_directory(project_root, "baseline")
+    run_dir = _create_run_directory(project_root, run_prefix)
     data_path = _write_dataset_config(
         run_dir,
         project_root / dataset_config.dataset_root,
@@ -199,10 +219,38 @@ def evaluate_baseline(
     best_model_path = run_dir / "weights" / "best.pt"
     _require_artifacts(run_dir, ("dataset.yaml", "weights/best.pt"))
     evaluation_dir = _create_run_directory(run_dir, "validation")
+    return _evaluate_model(
+        run_dir,
+        best_model_path,
+        run_dir / "dataset.yaml",
+        config.validation_split,
+        config,
+        dataset_config,
+        project_root,
+        device_summary,
+        model_factory,
+        evaluation_dir,
+    )
+
+
+def _evaluate_model(
+    run_dir: Path,
+    best_model_path: Path,
+    data_path: Path,
+    split: str,
+    config: BaselineConfig,
+    dataset_config: DatasetConfig,
+    project_root: Path,
+    device_summary: DeviceSummary,
+    model_factory: Callable[[str], Any],
+    evaluation_dir: Path,
+    release_artifact: str | None = None,
+) -> Path:
+    """Run the shared evaluation procedure for a validation or sealed test split."""
     model = model_factory(str(best_model_path))
     metrics = model.val(
-        data=str(run_dir / "dataset.yaml"),
-        split=config.validation_split,
+        data=str(data_path),
+        split="val",
         imgsz=config.image_size,
         batch=config.batch_size,
         workers=config.workers,
@@ -216,10 +264,10 @@ def evaluate_baseline(
         project_root / dataset_config.dataset_root,
         dataset_config.splits,
     )
-    validation_images = [
+    evaluation_images = [
         path
-        for split, path in dataset_image_paths
-        if split == config.validation_split
+        for image_split, path in dataset_image_paths
+        if image_split == split
     ]
     (
         slices,
@@ -228,9 +276,9 @@ def evaluate_baseline(
         label_contract_issue_count,
     ) = _save_error_examples_and_slices(
         model,
-        validation_images,
+        evaluation_images,
         project_root / dataset_config.dataset_root,
-        config.validation_split,
+        split,
         dataset_config.class_names,
         config,
         device_summary.device,
@@ -238,7 +286,7 @@ def evaluate_baseline(
     )
     latency = _measure_latency(
         model,
-        validation_images[: min(10, len(validation_images))],
+        evaluation_images[: min(10, len(evaluation_images))],
         config.image_size,
         config.confidence_threshold,
         device_summary.device,
@@ -247,6 +295,9 @@ def evaluate_baseline(
     _write_json(
         evaluation_dir / "evaluation-report.json",
         {
+            "dataset_split": split,
+            "release_artifact": release_artifact is not None,
+            "release_selection": release_artifact,
             "model": {
                 "path": str(best_model_path.relative_to(project_root)),
                 "size_bytes": best_model_path.stat().st_size,
@@ -258,7 +309,7 @@ def evaluate_baseline(
             "local_inference_latency_after_warmup": latency,
             "false_positive_examples": false_positive_count,
             "false_negative_examples": false_negative_count,
-            "validation_label_contract_issues": {
+            f"{split}_label_contract_issues": {
                 "count": label_contract_issue_count,
                 "handling": "Boxes are clipped to image bounds for error-example matching.",
             },
@@ -274,6 +325,245 @@ def evaluate_baseline(
         ),
     )
     return evaluation_dir
+
+
+def run_controlled_experiment(
+    control_run_dir: Path,
+    experiment_config: BaselineConfig,
+    dataset_config: DatasetConfig,
+    project_root: Path,
+    device_summary: DeviceSummary,
+    model_factory: Callable[[str], Any],
+) -> tuple[Path, Path, Path]:
+    """Train one image-size variant, compare validation results, and freeze a selection."""
+    control_run_dir = _validated_run_directory(control_run_dir, project_root)
+    if control_run_dir.parent.name != "baseline":
+        raise BaselineError("The controlled experiment must start from a baseline run")
+    control_config = _load_saved_config(control_run_dir / "resolved-config.json")
+    changed_fields = _changed_config_fields(control_config, experiment_config)
+    if changed_fields != ["image_size"]:
+        raise BaselineError(
+            "The controlled experiment must change only image_size; "
+            f"changed fields: {', '.join(changed_fields) or 'none'}"
+        )
+
+    experiment_run_dir = _run_training(
+        experiment_config,
+        dataset_config,
+        project_root,
+        device_summary,
+        model_factory,
+        run_prefix="experiment",
+    )
+    experiment_evaluation_dir = evaluate_baseline(
+        experiment_run_dir,
+        project_root,
+        dataset_config,
+        device_summary,
+        model_factory,
+    )
+    control_report_path = _latest_validation_report(control_run_dir)
+    experiment_report_path = experiment_evaluation_dir / "evaluation-report.json"
+    control_quality = _validation_quality(control_report_path)
+    experiment_quality = _validation_quality(experiment_report_path)
+    supports_change = experiment_quality > control_quality
+    selected_run_dir = experiment_run_dir if supports_change else control_run_dir
+    comparison_dir = _create_run_directory(project_root, "controlled-experiment")
+    comparison_path = comparison_dir / "comparison.json"
+    _write_json(
+        comparison_path,
+        {
+            "control": {
+                "run_dir": str(control_run_dir.relative_to(project_root)),
+                "validation_report": str(control_report_path.relative_to(project_root)),
+                "validation_map50_95": control_quality,
+            },
+            "experiment": {
+                "run_dir": str(experiment_run_dir.relative_to(project_root)),
+                "validation_report": str(experiment_report_path.relative_to(project_root)),
+                "validation_map50_95": experiment_quality,
+            },
+            "controlled_change": {
+                "parameter": "image_size",
+                "control_value": control_config.image_size,
+                "experiment_value": experiment_config.image_size,
+                "fixed": {
+                    "data": dataset_config.model_dump(mode="json"),
+                    "seed": control_config.seed,
+                    "base_weights": str(control_config.model_path),
+                    "evaluation_procedure": "validation evaluation with evaluate-baseline",
+                },
+            },
+            "validation_map50_95_delta": experiment_quality - control_quality,
+            "decision": {
+                "supports_change": supports_change,
+                "selected_run_dir": str(selected_run_dir.relative_to(project_root)),
+                "reason": "The image-size change is selected only when its validation "
+                "mAP50-95 is strictly higher than the control.",
+            },
+        },
+    )
+    release_path = _freeze_selected_baseline(
+        selected_run_dir,
+        comparison_path,
+        project_root,
+    )
+    return experiment_run_dir, comparison_path, release_path
+
+
+def evaluate_selected_baseline_on_test(
+    release_path: Path,
+    project_root: Path,
+    dataset_config: DatasetConfig,
+    device_summary: DeviceSummary,
+    model_factory: Callable[[str], Any],
+) -> Path:
+    """Evaluate the once-frozen baseline on the sealed test split exactly once."""
+    release_path = _validated_release_path(release_path, project_root)
+    release = _load_release_artifact(release_path)
+    if _release_test_report_exists(release_path, project_root):
+        raise BaselineError(
+            "A test evaluation already exists for this frozen selection; "
+            "do not retune or rerun it."
+        )
+    run_dir = _validated_run_directory(Path(release["selected_run_dir"]), project_root)
+    best_model_path = run_dir / "weights" / "best.pt"
+    expected_checksum = release["model_sha256"]
+    if _sha256_file(best_model_path) != expected_checksum:
+        raise BaselineError("The selected model checksum no longer matches the frozen release")
+    config = _load_saved_config(run_dir / "resolved-config.json")
+    evaluation_dir = _create_run_directory(project_root, "release-test")
+    test_data_path = _write_dataset_config(
+        evaluation_dir,
+        project_root / dataset_config.dataset_root,
+        dataset_config.class_names,
+        "test",
+    )
+    _evaluate_model(
+        run_dir,
+        best_model_path,
+        test_data_path,
+        "test",
+        config,
+        dataset_config,
+        project_root,
+        device_summary,
+        model_factory,
+        evaluation_dir,
+        release_artifact=str(release_path.relative_to(project_root)),
+    )
+    return evaluation_dir
+
+
+def _changed_config_fields(
+    control: BaselineConfig, experiment: BaselineConfig
+) -> list[str]:
+    """Return the versioned training fields that differ between two configurations."""
+    control_values = control.model_dump(mode="json")
+    experiment_values = experiment.model_dump(mode="json")
+    return sorted(
+        name
+        for name, control_value in control_values.items()
+        if experiment_values[name] != control_value
+    )
+
+
+def _latest_validation_report(run_dir: Path) -> Path:
+    """Find the most recent complete validation report for one training run."""
+    reports = list((run_dir / "artifacts" / "validation").glob("*/evaluation-report.json"))
+    if not reports:
+        raise BaselineError(f"No validation evaluation report exists for {run_dir}")
+    return max(reports, key=lambda path: path.stat().st_mtime)
+
+
+def _validation_quality(report_path: Path) -> float:
+    """Read the checkpoint-selection metric from an evaluation report."""
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        value = report["overall_metrics"]["metrics/mAP50-95(B)"]
+        return float(value)
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise BaselineError(f"Invalid validation evaluation report: {report_path}") from error
+
+
+def _freeze_selected_baseline(
+    selected_run_dir: Path, comparison_path: Path, project_root: Path
+) -> Path:
+    """Create the immutable selection record required before test evaluation."""
+    release_dir = project_root / "artifacts" / "releases"
+    release_path = release_dir / "selected-baseline.json"
+    if release_path.exists():
+        raise BaselineError(
+            f"A selected baseline is already frozen at {release_path}; do not replace it."
+        )
+    best_model_path = selected_run_dir / "weights" / "best.pt"
+    _require_artifacts(selected_run_dir, ("weights/best.pt",))
+    release_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(
+        release_path,
+        {
+            "artifact_type": "phase_2_selected_baseline",
+            "selected_run_dir": str(selected_run_dir.relative_to(project_root)),
+            "model_path": str(best_model_path.relative_to(project_root)),
+            "model_sha256": _sha256_file(best_model_path),
+            "selection_evidence": str(comparison_path.relative_to(project_root)),
+            "selection_metric": "validation mAP50-95",
+            "selection_rule": "Select the higher validation mAP50-95; retain the control on a tie.",
+        },
+    )
+    return release_path
+
+
+def _validated_release_path(release_path: Path, project_root: Path) -> Path:
+    """Resolve a selected-baseline release record within the releases directory."""
+    resolved = release_path if release_path.is_absolute() else project_root / release_path
+    resolved = resolved.resolve()
+    allowed_root = (project_root / "artifacts" / "releases").resolve()
+    if not resolved.is_file() or not resolved.is_relative_to(allowed_root):
+        raise BaselineError(f"Selected baseline release artifact is invalid: {release_path}")
+    return resolved
+
+
+def _load_release_artifact(release_path: Path) -> dict[str, str]:
+    """Load and validate the minimal immutable selected-baseline record."""
+    try:
+        contents = json.loads(release_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        message = f"Invalid selected baseline release artifact: {release_path}"
+        raise BaselineError(message) from error
+    required = {"artifact_type", "selected_run_dir", "model_path", "model_sha256"}
+    if (
+        not isinstance(contents, dict)
+        or contents.get("artifact_type") != "phase_2_selected_baseline"
+        or not required.issubset(contents)
+        or not all(isinstance(contents[name], str) for name in required)
+    ):
+        raise BaselineError(f"Invalid selected baseline release artifact: {release_path}")
+    return {name: contents[name] for name in required}
+
+
+def _release_test_report_exists(release_path: Path, project_root: Path) -> bool:
+    """Detect a prior test result linked to the same frozen release selection."""
+    release_reference = str(release_path.relative_to(project_root))
+    for report_path in (project_root / "artifacts" / "release-test").glob(
+        "*/evaluation-report.json"
+    ):
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if report.get("release_selection") == release_reference:
+            return True
+    return False
+
+
+def _sha256_file(path: Path) -> str:
+    """Calculate a stable SHA-256 model identity without loading the model."""
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 class PeakMemoryMonitor:
@@ -408,11 +698,14 @@ def _classify_validation_trend(training_losses: list[float], quality: list[float
 
 
 def _validated_run_directory(run_dir: Path, project_root: Path) -> Path:
-    """Resolve one baseline run directory contained in the project artifacts root."""
+    """Resolve one baseline or experiment run directory in the project artifacts root."""
     resolved = run_dir if run_dir.is_absolute() else project_root / run_dir
     resolved = resolved.resolve()
-    allowed_root = (project_root / "artifacts" / "baseline").resolve()
-    if not resolved.is_dir() or not resolved.is_relative_to(allowed_root):
+    allowed_roots = (
+        (project_root / "artifacts" / "baseline").resolve(),
+        (project_root / "artifacts" / "experiment").resolve(),
+    )
+    if not resolved.is_dir() or not any(resolved.is_relative_to(root) for root in allowed_roots):
         raise BaselineError(f"Baseline run directory is invalid: {run_dir}")
     return resolved
 
