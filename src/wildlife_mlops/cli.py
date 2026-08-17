@@ -6,6 +6,12 @@ import argparse
 import json
 from pathlib import Path
 
+from wildlife_mlops.baseline import (
+    BaselineError,
+    evaluate_baseline,
+    load_baseline_config,
+    run_baseline_train,
+)
 from wildlife_mlops.config import load_config
 from wildlife_mlops.data.audit import audit_splits
 from wildlife_mlops.data.config import load_dataset_config
@@ -84,6 +90,33 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
         help="Override runtime.requested_device for this training run.",
+    )
+    baseline_parser = subparsers.add_parser(
+        "train-baseline", help="Train the first full-data baseline."
+    )
+    baseline_parser.add_argument(
+        "--train-config",
+        type=Path,
+        default=Path("configs/train/baseline.yaml"),
+        help="Path to the versioned baseline-training configuration.",
+    )
+    baseline_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this training run.",
+    )
+    evaluation_parser = subparsers.add_parser(
+        "evaluate-baseline", help="Evaluate one pinned baseline on validation data."
+    )
+    evaluation_parser.add_argument(
+        "--run-dir", type=Path, required=True, help="Baseline run directory."
+    )
+    evaluation_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this evaluation.",
     )
     subparsers.add_parser(
         "data-download", help="Download and extract the checksum-verified dataset."
@@ -206,8 +239,38 @@ def main() -> int:
                 getattr(ultralytics, "YOLO"),
             )
             print(f"Wrote smoke-training artifacts: {run_dir}")
+        elif args.command == "train-baseline":
+            baseline_config = load_baseline_config(args.train_config)
+            device_summary = collect_device_summary(
+                args.device or config.project.runtime.requested_device
+            )
+            import ultralytics
+
+            run_dir = run_baseline_train(
+                baseline_config,
+                data_config,
+                Path.cwd(),
+                device_summary,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote baseline-training artifacts: {run_dir}")
+        elif args.command == "evaluate-baseline":
+            device_summary = collect_device_summary(
+                args.device or config.project.runtime.requested_device
+            )
+            import ultralytics
+
+            evaluation_dir = evaluate_baseline(
+                args.run_dir,
+                Path.cwd(),
+                data_config,
+                device_summary,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote validation evaluation artifacts: {evaluation_dir}")
     except (
         DatasetDownloadError,
+        BaselineError,
         ImportError,
         OSError,
         OverfitDiagnosticError,

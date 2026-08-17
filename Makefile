@@ -2,7 +2,7 @@ UV := uv
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained train-overfit train-smoke
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained train-overfit train-smoke train-baseline evaluate-baseline
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -18,6 +18,13 @@ train-overfit:
 
 train-smoke:
 	$(UV) run wildlife-mlops train-smoke
+
+train-baseline:
+	$(UV) run wildlife-mlops train-baseline
+
+evaluate-baseline:
+	@test -n "$(RUN_DIR)" || (echo "RUN_DIR is required, for example: make evaluate-baseline RUN_DIR=artifacts/baseline/<run>"; exit 2)
+	$(UV) run wildlife-mlops evaluate-baseline --run-dir "$(RUN_DIR)"
 
 lint:
 	$(UV) run ruff check src tests

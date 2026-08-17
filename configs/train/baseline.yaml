@@ -1,0 +1,8 @@
+model_path: models/pretrained/yolo26n-v8.4.0.pt
+epochs: 5
+image_size: 160
+batch_size: 8
+workers: 0
+seed: 7
+validation_split: val
+confidence_threshold: 0.25
