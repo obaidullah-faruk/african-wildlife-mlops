@@ -13,6 +13,7 @@ make bootstrap
 ```sh
 make doctor
 make device-info
+make train-overfit
 make lint
 make typecheck
 make test

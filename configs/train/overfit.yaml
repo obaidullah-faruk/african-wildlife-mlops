@@ -1,0 +1,15 @@
+model_path: models/pretrained/yolo26n-v8.4.0.pt
+source_split: train
+image_count: 8
+epochs: 100
+image_size: 320
+batch_size: 8
+workers: 0
+seed: 7
+target_map50: 0.90
+optimizer: SGD
+initial_learning_rate: 0.01
+final_learning_rate_fraction: 0.01
+warmup_epochs: 0.0
+weight_decay: 0.0
+nominal_batch_size: 8

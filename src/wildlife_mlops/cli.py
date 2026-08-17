@@ -15,6 +15,11 @@ from wildlife_mlops.data.validate import validate_dataset, write_validation_repo
 from wildlife_mlops.data.visualize import create_contact_sheets
 from wildlife_mlops.device import DeviceSelectionError, collect_device_summary
 from wildlife_mlops.doctor import run_doctor
+from wildlife_mlops.overfit import (
+    OverfitDiagnosticError,
+    load_overfit_config,
+    run_overfit_diagnostic,
+)
 from wildlife_mlops.pretrained import (
     PretrainedInferenceError,
     load_pretrained_config,
@@ -48,6 +53,21 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
         help="Override runtime.requested_device for this command.",
+    )
+    overfit_parser = subparsers.add_parser(
+        "train-overfit", help="Train and validate an intentionally tiny duplicated dataset."
+    )
+    overfit_parser.add_argument(
+        "--train-config",
+        type=Path,
+        default=Path("configs/train/overfit.yaml"),
+        help="Path to the versioned tiny-dataset training configuration.",
+    )
+    overfit_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this training run.",
     )
     subparsers.add_parser(
         "data-download", help="Download and extract the checksum-verified dataset."
@@ -140,10 +160,26 @@ def main() -> int:
                 getattr(ultralytics, "YOLO"),
             )
             print(f"Wrote pretrained predictions: {output_path}")
+        elif args.command == "train-overfit":
+            overfit_config = load_overfit_config(args.train_config)
+            device_summary = collect_device_summary(
+                args.device or config.project.runtime.requested_device
+            )
+            import ultralytics
+
+            report_path = run_overfit_diagnostic(
+                overfit_config,
+                data_config,
+                Path.cwd(),
+                device_summary,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote overfit diagnostic report: {report_path}")
     except (
         DatasetDownloadError,
         ImportError,
         OSError,
+        OverfitDiagnosticError,
         PretrainedInferenceError,
         ValueError,
     ) as error:
