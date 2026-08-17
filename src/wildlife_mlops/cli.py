@@ -14,6 +14,11 @@ from wildlife_mlops.data.inventory import create_inventory, create_smoke_manifes
 from wildlife_mlops.data.validate import validate_dataset, write_validation_report
 from wildlife_mlops.data.visualize import create_contact_sheets
 from wildlife_mlops.doctor import run_doctor
+from wildlife_mlops.pretrained import (
+    PretrainedInferenceError,
+    load_pretrained_config,
+    run_pretrained_inference,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -45,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("data-audit-splits", help="Write exact and perceptual duplicate reports.")
     subparsers.add_parser(
         "data-smoke-manifest", help="Write a deterministic training smoke manifest."
+    )
+    subparsers.add_parser(
+        "predict-pretrained", help="Predict a fixed image sample with pinned weights."
     )
     return parser
 
@@ -100,8 +108,25 @@ def main() -> int:
             print(f"Wrote split integrity report: {audit_splits(data_config, Path.cwd())}")
         elif args.command == "data-smoke-manifest":
             print(f"Wrote smoke manifest: {create_smoke_manifest(data_config, Path.cwd())}")
-    except (DatasetDownloadError, OSError, ValueError) as error:
-        print(f"Data command failed: {error}")
+        elif args.command == "predict-pretrained":
+            inference_config = load_pretrained_config(Path("configs/inference/pretrained.yaml"))
+            import ultralytics
+
+            output_path = run_pretrained_inference(
+                inference_config,
+                Path.cwd() / data_config.dataset_root,
+                Path.cwd(),
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote pretrained predictions: {output_path}")
+    except (
+        DatasetDownloadError,
+        ImportError,
+        OSError,
+        PretrainedInferenceError,
+        ValueError,
+    ) as error:
+        print(f"Command failed: {error}")
         return 1
     return 0
 

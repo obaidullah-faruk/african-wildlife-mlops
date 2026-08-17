@@ -2,6 +2,7 @@
 .env
 .venv/
 .uv-cache/
+.matplotlib-cache/
 
 # Python tooling
 __pycache__/

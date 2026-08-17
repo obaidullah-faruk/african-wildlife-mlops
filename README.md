@@ -28,6 +28,12 @@ make data-audit-splits
 make data-smoke-manifest
 ```
 
+## Pretrained prediction
+
+```sh
+make predict-pretrained
+```
+
 ## Prediction schema
 
 ```json
