@@ -1,0 +1,16 @@
+schema_version: 1
+source_url: https://github.com/ultralytics/assets/releases/download/v0.0.0/african-wildlife.zip
+archive_path: data/raw/african-wildlife.zip
+dataset_root: data/raw/african-wildlife
+expected_sha256: 6b97a768bd8c89a4ac6f1fd72549a5af805f68568d8846fd0fe68e30c0040061
+class_names:
+  - buffalo
+  - elephant
+  - rhino
+  - zebra
+splits:
+  train: 1052
+  val: 225
+  test: 227
+smoke_subset_size: 24
+test_split_sealed: true

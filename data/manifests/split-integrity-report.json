@@ -1,0 +1,331 @@
+{
+  "cross_split_near_duplicates": [
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (124).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/1 (122).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (151).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (103).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (229).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/1 (223).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (237).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (365).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (314).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (183).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (315).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (356).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (322).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (128).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (325).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (55).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (355).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (192).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (360).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/1 (334).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (371).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (171).jpg"
+    },
+    {
+      "distance": 2,
+      "left": "train:data/raw/african-wildlife/images/train/1 (70).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (74).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (86).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/1 (128).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/1 (98).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/1 (334).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/2 (237).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/2 (355).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/2 (242).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/2 (270).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/2 (373).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/2 (269).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (116).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (323).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (230).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/3 (226).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (235).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/3 (326).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (275).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (192).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (311).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/3 (364).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (321).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (139).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (342).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (59).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/3 (360).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (213).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/4 (236).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/4 (213).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/4 (253).jpg",
+      "right": "val:data/raw/african-wildlife/images/val/4 (318).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/4 (320).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/4 (266).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/4 (342).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/4 (374).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "train:data/raw/african-wildlife/images/train/4 (364).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/4 (222).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "val:data/raw/african-wildlife/images/val/3 (269).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (83).jpg"
+    },
+    {
+      "distance": 0,
+      "left": "val:data/raw/african-wildlife/images/val/3 (318).jpg",
+      "right": "test:data/raw/african-wildlife/images/test/3 (83).jpg"
+    }
+  ],
+  "exact_duplicate_groups": {
+    "00254e6e5bff196fa0bd088b6f02b0f2c93d9fb89f9eefaadf6bac32763abd89": [
+      "test:data/raw/african-wildlife/images/test/3 (129).jpg",
+      "test:data/raw/african-wildlife/images/test/3 (354).jpg"
+    ],
+    "0566868e6ff0055f27b207f45b913dc59d60cdfd69ad066856ef18ff373ccd50": [
+      "train:data/raw/african-wildlife/images/train/4 (363).jpg",
+      "train:data/raw/african-wildlife/images/train/4 (365).jpg"
+    ],
+    "05a7bf27d47158fb57e5343031809c3d9e8b405c6873c5d900da848048e1cb89": [
+      "train:data/raw/african-wildlife/images/train/4 (282).jpg",
+      "train:data/raw/african-wildlife/images/train/4 (286).jpg"
+    ],
+    "081918cca8f2872499d9933d0178273e2f79845f2cde756abc0879c756e91bc8": [
+      "test:data/raw/african-wildlife/images/test/3 (287).jpg",
+      "test:data/raw/african-wildlife/images/test/3 (7).jpg"
+    ],
+    "1556ec22072b0d13d2dfde1d740c3213394dcff69d7ec89f30b27568feaf77dd": [
+      "train:data/raw/african-wildlife/images/train/2 (242).jpg",
+      "test:data/raw/african-wildlife/images/test/2 (270).jpg"
+    ],
+    "161a6e1c9347e95963a9daff3cda2d32be9b0f38583b615e071eb08bae042f7c": [
+      "val:data/raw/african-wildlife/images/val/3 (269).jpg",
+      "val:data/raw/african-wildlife/images/val/3 (318).jpg",
+      "test:data/raw/african-wildlife/images/test/3 (83).jpg"
+    ],
+    "18613be809d4a74b5f30a2ae308c504fabfdb3c6bdab8a37c50342c61188c9b2": [
+      "train:data/raw/african-wildlife/images/train/3 (195).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (288).jpg"
+    ],
+    "2e48cf85b5979395a2fc1a6764376e8ac71fd46965671d689fcd95cc8e6b378f": [
+      "train:data/raw/african-wildlife/images/train/1 (33).jpg",
+      "train:data/raw/african-wildlife/images/train/1 (339).jpg"
+    ],
+    "380ec123ec827874e8571534b755dbebed4bc8439eea5dc90e1a2981d119af81": [
+      "train:data/raw/african-wildlife/images/train/1 (316).jpg",
+      "train:data/raw/african-wildlife/images/train/1 (67).jpg"
+    ],
+    "3d928f424a2d23a8fc2a0d99c9983d9b611615fd3daaceacd364b8c63050b570": [
+      "train:data/raw/african-wildlife/images/train/4 (258).jpg",
+      "train:data/raw/african-wildlife/images/train/4 (287).jpg"
+    ],
+    "3e1066fb2a49462f702eab5f89d4ac137fd69ca1d7e9a64ee37decd828402108": [
+      "train:data/raw/african-wildlife/images/train/3 (191).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (333).jpg"
+    ],
+    "41df39bfc658a2251bf042ea3a8b8eda1b68d136cc9426c35b6e571b7655b572": [
+      "train:data/raw/african-wildlife/images/train/1 (124).jpg",
+      "val:data/raw/african-wildlife/images/val/1 (122).jpg"
+    ],
+    "424163fcf8e6665d874bf6bb09d63678753490be2cbf4d4c0dec765c22669306": [
+      "train:data/raw/african-wildlife/images/train/1 (98).jpg",
+      "val:data/raw/african-wildlife/images/val/1 (334).jpg"
+    ],
+    "4412536800ded33301e82e9242fb224ab689de02469962bb993184014889cb67": [
+      "train:data/raw/african-wildlife/images/train/3 (321).jpg",
+      "test:data/raw/african-wildlife/images/test/3 (139).jpg"
+    ],
+    "4476f8cfe0640795ab41b1eb332b6053333a84ad655cd9950b9abbcb198b3e5f": [
+      "train:data/raw/african-wildlife/images/train/4 (255).jpg",
+      "train:data/raw/african-wildlife/images/train/4 (319).jpg"
+    ],
+    "475f293f5e81956e3730a5e6c0f88129f50540285e95b0d78d8c35dd19404714": [
+      "train:data/raw/african-wildlife/images/train/4 (236).jpg",
+      "test:data/raw/african-wildlife/images/test/4 (213).jpg"
+    ],
+    "4b6f50daf119ef57f7c7549d8482523c5603f71b02763119134e2698a9db0faf": [
+      "train:data/raw/african-wildlife/images/train/3 (360).jpg",
+      "test:data/raw/african-wildlife/images/test/3 (213).jpg"
+    ],
+    "5049dde9d116e5f742a433f5e5c48714f00fd29e79744eb2719bcc4b85956b37": [
+      "train:data/raw/african-wildlife/images/train/3 (235).jpg",
+      "val:data/raw/african-wildlife/images/val/3 (326).jpg"
+    ],
+    "5dffcefaba07261a23914d706d4b392c6649a70eee6fd9d3c68a6a01a9d6deef": [
+      "train:data/raw/african-wildlife/images/train/1 (371).jpg",
+      "test:data/raw/african-wildlife/images/test/1 (171).jpg"
+    ],
+    "618471d72edfc65372a8929a877acb1d12d8db3c2d4d08993dbceb17669a065e": [
+      "train:data/raw/african-wildlife/images/train/3 (124).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (332).jpg"
+    ],
+    "64c330c35f2495d27e4fe48ef7589f4b9190ab84bf8034b97eff9fba73ae3f44": [
+      "train:data/raw/african-wildlife/images/train/1 (322).jpg",
+      "test:data/raw/african-wildlife/images/test/1 (128).jpg"
+    ],
+    "8263d4596289ee3375c8582683f45ce9f4aa38a38f005b74982b7882cb9f1105": [
+      "train:data/raw/african-wildlife/images/train/3 (190).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (365).jpg"
+    ],
+    "84627e56546b1bf5ba7b402935b100d02ab097858f886e0a5e3a19f1feee0e6a": [
+      "train:data/raw/african-wildlife/images/train/3 (175).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (216).jpg"
+    ],
+    "89bb2c078800d43e9db98adfb6c703b51485180809af3f7bce8a492ebd7082b0": [
+      "train:data/raw/african-wildlife/images/train/3 (342).jpg",
+      "test:data/raw/african-wildlife/images/test/3 (59).jpg"
+    ],
+    "8b746c4a4f1d72e57786ba6cd010e8108d24b9d455e7a14fe759bed8a92ab250": [
+      "train:data/raw/african-wildlife/images/train/1 (151).jpg",
+      "test:data/raw/african-wildlife/images/test/1 (103).jpg"
+    ],
+    "a2fa3e6766cdf9bc5ebac5bc3885ae12bb216ab757307dc5fb88bc7fa2050848": [
+      "train:data/raw/african-wildlife/images/train/2 (373).jpg",
+      "test:data/raw/african-wildlife/images/test/2 (269).jpg"
+    ],
+    "b1e99a8e580d8543fdaf8bed85a0d6d0630ee51ab4af5988cfe102cb503c3a93": [
+      "train:data/raw/african-wildlife/images/train/3 (118).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (316).jpg"
+    ],
+    "b9df0c4449d2c5a2050534a61efa178dd9c6dcdeac7977b57b66c921b53a8506": [
+      "train:data/raw/african-wildlife/images/train/4 (216).jpg",
+      "train:data/raw/african-wildlife/images/train/4 (356).jpg"
+    ],
+    "bb1053c35b969f1d207e6c64522a9c9a2d4e0e7b4045a4dbe3d0ba0d131680aa": [
+      "test:data/raw/african-wildlife/images/test/4 (226).jpg",
+      "test:data/raw/african-wildlife/images/test/4 (366).jpg"
+    ],
+    "bd133c933dddfad17e3203597f34c6d8599b42699bb393d43ed800e716189366": [
+      "train:data/raw/african-wildlife/images/train/3 (1).jpg",
+      "train:data/raw/african-wildlife/images/train/3 (289).jpg"
+    ],
+    "c04b86583b08f6d3faaab9105947c30442b2cefd1a80fa1d64b3f612a6fcc040": [
+      "train:data/raw/african-wildlife/images/train/2 (237).jpg",
+      "val:data/raw/african-wildlife/images/val/2 (355).jpg"
+    ],
+    "c3ab57677ae479979362b1150df30a8d1a8e3ac994686b873934882f074e88e4": [
+      "train:data/raw/african-wildlife/images/train/4 (342).jpg",
+      "test:data/raw/african-wildlife/images/test/4 (374).jpg"
+    ],
+    "ca2e6934e437b493618ba6d024e27783e45c6f772d32d4d74c1119e5dde5bf7c": [
+      "train:data/raw/african-wildlife/images/train/3 (230).jpg",
+      "val:data/raw/african-wildlife/images/val/3 (226).jpg"
+    ],
+    "d3bd22cfdd3c8ade23ed2da9ead809614c32f9b68793f8cf34c9f6f27e0d3c60": [
+      "train:data/raw/african-wildlife/images/train/4 (215).jpg",
+      "train:data/raw/african-wildlife/images/train/4 (242).jpg"
+    ],
+    "dd4b54a043e27c77fefb0d5dbb716ab65c402abb4c42d489b90c2d4b966bf397": [
+      "train:data/raw/african-wildlife/images/train/4 (320).jpg",
+      "test:data/raw/african-wildlife/images/test/4 (266).jpg"
+    ],
+    "e364f55729b5a8272f4c0a39b08aa1c67f0ad2d1fc3333e53e0480ec3ab28639": [
+      "train:data/raw/african-wildlife/images/train/4 (253).jpg",
+      "val:data/raw/african-wildlife/images/val/4 (318).jpg"
+    ],
+    "ed65685d547dab40061f58dc46f0e8741c55b4905776ee837fc21c9f6ea25423": [
+      "train:data/raw/african-wildlife/images/train/1 (229).jpg",
+      "val:data/raw/african-wildlife/images/val/1 (223).jpg"
+    ],
+    "ee192b212b9293bb2bd647681cc1f5e515d1e343eae58761e2f0d0bc24b371a3": [
+      "train:data/raw/african-wildlife/images/train/1 (354).jpg",
+      "train:data/raw/african-wildlife/images/train/1 (84).jpg"
+    ],
+    "f589f0b3e2fba5dd3604bf0bdc22bbba24a37d72323aaba687e8e93c5d05cd9f": [
+      "train:data/raw/african-wildlife/images/train/4 (364).jpg",
+      "test:data/raw/african-wildlife/images/test/4 (222).jpg"
+    ],
+    "fd1a5f8af521075712b0622dca9359498c8378e8cdc1c032d01af326b4630a21": [
+      "val:data/raw/african-wildlife/images/val/1 (15).jpg",
+      "val:data/raw/african-wildlife/images/val/1 (327).jpg"
+    ]
+  },
+  "generated_at": "2026-08-17T12:45:26.041517+00:00",
+  "near_duplicate_threshold": 6,
+  "perceptual_hash": "phash",
+  "schema_version": 1
+}

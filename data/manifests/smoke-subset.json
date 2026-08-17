@@ -1,0 +1,32 @@
+{
+  "image_count": 24,
+  "images": [
+    "data/raw/african-wildlife/images/train/1 (360).jpg",
+    "data/raw/african-wildlife/images/train/3 (350).jpg",
+    "data/raw/african-wildlife/images/train/1 (240).jpg",
+    "data/raw/african-wildlife/images/train/1 (216).jpg",
+    "data/raw/african-wildlife/images/train/1 (361).jpg",
+    "data/raw/african-wildlife/images/train/4 (286).jpg",
+    "data/raw/african-wildlife/images/train/4 (63).jpg",
+    "data/raw/african-wildlife/images/train/2 (218).jpg",
+    "data/raw/african-wildlife/images/train/1 (36).jpg",
+    "data/raw/african-wildlife/images/train/4 (28).jpg",
+    "data/raw/african-wildlife/images/train/4 (54).jpg",
+    "data/raw/african-wildlife/images/train/2 (47).jpg",
+    "data/raw/african-wildlife/images/train/4 (287).jpg",
+    "data/raw/african-wildlife/images/train/2 (180).jpg",
+    "data/raw/african-wildlife/images/train/1 (49).jpg",
+    "data/raw/african-wildlife/images/train/1 (87).jpg",
+    "data/raw/african-wildlife/images/train/2 (170).jpg",
+    "data/raw/african-wildlife/images/train/2 (145).jpg",
+    "data/raw/african-wildlife/images/train/1 (280).jpg",
+    "data/raw/african-wildlife/images/train/2 (275).jpg",
+    "data/raw/african-wildlife/images/train/1 (124).jpg",
+    "data/raw/african-wildlife/images/train/1 (350).jpg",
+    "data/raw/african-wildlife/images/train/3 (171).jpg",
+    "data/raw/african-wildlife/images/train/1 (363).jpg"
+  ],
+  "schema_version": 1,
+  "source_archive_sha256": "6b97a768bd8c89a4ac6f1fd72549a5af805f68568d8846fd0fe68e30c0040061",
+  "source_split": "train"
+}

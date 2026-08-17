@@ -1,7 +1,7 @@
 UV := uv
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 
-.PHONY: bootstrap doctor lint typecheck test container-arm64 container-amd64
+.PHONY: bootstrap doctor lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -23,3 +23,21 @@ container-arm64:
 
 container-amd64:
 	docker run --rm --platform linux/amd64 alpine:3.20 uname -m
+
+data-download:
+	$(UV) run wildlife-mlops data-download
+
+data-inventory:
+	$(UV) run wildlife-mlops data-inventory
+
+data-validate:
+	$(UV) run wildlife-mlops data-validate
+
+data-visualize:
+	$(UV) run wildlife-mlops data-visualize
+
+data-audit-splits:
+	$(UV) run wildlife-mlops data-audit-splits
+
+data-smoke-manifest:
+	$(UV) run wildlife-mlops data-smoke-manifest

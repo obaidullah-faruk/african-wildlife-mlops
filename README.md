@@ -17,6 +17,17 @@ make typecheck
 make test
 ```
 
+## Data commands
+
+```sh
+make data-download
+make data-inventory
+make data-validate
+make data-visualize
+make data-audit-splits
+make data-smoke-manifest
+```
+
 ## Prediction schema
 
 ```json

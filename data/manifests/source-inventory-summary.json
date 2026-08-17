@@ -1,0 +1,82 @@
+{
+  "archive_sha256": "6b97a768bd8c89a4ac6f1fd72549a5af805f68568d8846fd0fe68e30c0040061",
+  "box_area": {
+    "count": 2685,
+    "max": 0.993749338285,
+    "mean": 0.27080684944279926,
+    "min": 0.0022656,
+    "p50": 0.213078366174,
+    "p95": 0.7013508814389999
+  },
+  "box_aspect_ratio": {
+    "count": 2685,
+    "max": 2.798507863478907,
+    "mean": 0.819951923762489,
+    "min": 0.12918874457763654,
+    "p50": 0.8025470317003632,
+    "p95": 1.3963213114342872
+  },
+  "boxes_by_class": {
+    "buffalo": 554,
+    "elephant": 748,
+    "rhino": 559,
+    "zebra": 824
+  },
+  "boxes_per_image": {
+    "count": 1504,
+    "max": 25.0,
+    "mean": 1.7852393617021276,
+    "min": 1.0,
+    "p50": 1.0,
+    "p95": 4.0
+  },
+  "class_names": [
+    "buffalo",
+    "elephant",
+    "rhino",
+    "zebra"
+  ],
+  "expected_images_by_split": {
+    "test": 227,
+    "train": 1052,
+    "val": 225
+  },
+  "generated_at": "2026-08-17T12:44:54.963037+00:00",
+  "image_aspect_ratio": {
+    "count": 1504,
+    "max": 3.221476510067114,
+    "mean": 1.467660913218649,
+    "min": 0.6375,
+    "p50": 1.4992503748125936,
+    "p95": 1.9130434782608696
+  },
+  "image_height": {
+    "count": 1504,
+    "max": 1920.0,
+    "mean": 555.093085106383,
+    "min": 86.0,
+    "p50": 480.0,
+    "p95": 1200.0
+  },
+  "image_width": {
+    "count": 1504,
+    "max": 1920.0,
+    "mean": 805.9753989361702,
+    "min": 99.0,
+    "p50": 640.0,
+    "p95": 1920.0
+  },
+  "images_by_split": {
+    "test": 227,
+    "train": 1052,
+    "val": 225
+  },
+  "labels_by_split": {
+    "test": 227,
+    "train": 1052,
+    "val": 225
+  },
+  "retrieval_date": "2026-08-17",
+  "schema_version": 1,
+  "source_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/african-wildlife.zip"
+}
