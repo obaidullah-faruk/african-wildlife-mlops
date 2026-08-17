@@ -14,6 +14,7 @@ make bootstrap
 make doctor
 make device-info
 make train-overfit
+make train-smoke
 make lint
 make typecheck
 make test

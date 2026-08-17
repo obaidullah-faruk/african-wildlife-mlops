@@ -25,6 +25,7 @@ from wildlife_mlops.pretrained import (
     load_pretrained_config,
     run_pretrained_inference,
 )
+from wildlife_mlops.smoke import SmokeTrainError, load_smoke_train_config, run_smoke_train
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -64,6 +65,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the versioned tiny-dataset training configuration.",
     )
     overfit_parser.add_argument(
+        "--device",
+        choices=("auto", "mps", "cuda", "cpu"),
+        default=None,
+        help="Override runtime.requested_device for this training run.",
+    )
+    smoke_parser = subparsers.add_parser(
+        "train-smoke", help="Run one deterministic training epoch on the smoke subset."
+    )
+    smoke_parser.add_argument(
+        "--train-config",
+        type=Path,
+        default=Path("configs/train/smoke.yaml"),
+        help="Path to the versioned smoke-training configuration.",
+    )
+    smoke_parser.add_argument(
         "--device",
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
@@ -175,12 +191,28 @@ def main() -> int:
                 getattr(ultralytics, "YOLO"),
             )
             print(f"Wrote overfit diagnostic report: {report_path}")
+        elif args.command == "train-smoke":
+            smoke_config = load_smoke_train_config(args.train_config)
+            device_summary = collect_device_summary(
+                args.device or config.project.runtime.requested_device
+            )
+            import ultralytics
+
+            run_dir = run_smoke_train(
+                smoke_config,
+                data_config,
+                Path.cwd(),
+                device_summary,
+                getattr(ultralytics, "YOLO"),
+            )
+            print(f"Wrote smoke-training artifacts: {run_dir}")
     except (
         DatasetDownloadError,
         ImportError,
         OSError,
         OverfitDiagnosticError,
         PretrainedInferenceError,
+        SmokeTrainError,
         ValueError,
     ) as error:
         print(f"Command failed: {error}")

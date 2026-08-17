@@ -2,7 +2,7 @@ UV := uv
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained train-overfit
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained train-overfit train-smoke
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -15,6 +15,9 @@ device-info:
 
 train-overfit:
 	$(UV) run wildlife-mlops train-overfit
+
+train-smoke:
+	$(UV) run wildlife-mlops train-smoke
 
 lint:
 	$(UV) run ruff check src tests
