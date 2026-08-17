@@ -1,0 +1,21 @@
+# Local secrets and environment
+.env
+.venv/
+.uv-cache/
+
+# Python tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local agent guidance and working documentation
+AGENTS.md
+docs/
+
+# Data and generated artifacts
+data/raw/
+data/prepared/
+artifacts/
+models/

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wildlife-mlops"
+version = "0.1.0"
+description = "A local-first wildlife detection MLOps learning lab."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "PyYAML>=6.0.2,<7",
+  "torch>=2.6,<3",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.14,<2",
+  "pytest>=8.3,<9",
+  "ruff>=0.9,<1",
+  "types-PyYAML>=6.0.12.20250915,<7",
+]
+aws = [
+  "boto3>=1.35,<2",
+  "sagemaker>=2.235,<3",
+]
+
+[project.scripts]
+wildlife-mlops = "wildlife_mlops.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wildlife_mlops"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-q"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]

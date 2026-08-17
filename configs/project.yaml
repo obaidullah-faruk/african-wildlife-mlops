@@ -1,0 +1,9 @@
+project_name: wildlife-detection-mlops-lab
+classes:
+  - buffalo
+  - elephant
+  - rhino
+  - zebra
+runtime:
+  requested_device: auto
+  minimum_free_disk_gib: 20
