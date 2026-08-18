@@ -52,6 +52,26 @@ make mlflow-storage-verify
 
 Inspect `artifacts/mlflow-storage-verification/storage-verification.json`.
 
+Practice a complete local maintenance exercise. It creates a known run, records
+the MLflow version, backs up PostgreSQL and MinIO, runs the database upgrade,
+restores both backups, and verifies the known run and its artifact.
+
+```sh
+make mlflow-maintenance
+```
+
+The backup and report are written under `artifacts/mlflow-maintenance/`.
+
+To observe a partial MLflow run, start MLflow with an invalid MinIO credential.
+Run one smoke training command. It should report that metrics were logged while
+the artifact upload failed. Restore the normal server immediately afterwards.
+
+```sh
+make mlflow-break-artifacts
+make train-smoke
+make mlflow-up
+```
+
 Run the tracked smoke training and then open
 <http://127.0.0.1:5001>. Select the `wildlife-smoke` experiment and inspect the
 parameters, terminal metrics, and `training-output` artifacts.

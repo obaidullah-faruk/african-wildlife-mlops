@@ -5,7 +5,7 @@ MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
 MLFLOW_EXPERIMENT ?= wildlife-smoke
 COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke mlflow-storage-verify
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke mlflow-storage-verify mlflow-maintenance mlflow-break-artifacts
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -43,6 +43,14 @@ mlflow-smoke:
 mlflow-storage-verify:
 	@$(MAKE) --no-print-directory mlflow-env-check
 	$(UV) run wildlife-mlops verify-mlflow-storage --tracking-uri "$(MLFLOW_TRACKING_URI)"
+
+mlflow-maintenance:
+	@$(MAKE) --no-print-directory mlflow-env-check
+	$(UV) run wildlife-mlops practice-mlflow-maintenance --tracking-uri "$(MLFLOW_TRACKING_URI)"
+
+mlflow-break-artifacts:
+	@$(MAKE) --no-print-directory mlflow-env-check
+	docker compose --env-file .env -f docker-compose.yml -f docker-compose.invalid-artifact.yml up -d --force-recreate mlflow
 
 train-baseline:
 	$(UV) run wildlife-mlops train-baseline --tracking-uri "$(MLFLOW_TRACKING_URI)" --experiment-name "wildlife-baseline-comparison"

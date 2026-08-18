@@ -23,6 +23,7 @@ from wildlife_mlops.data.validate import validate_dataset, write_validation_repo
 from wildlife_mlops.data.visualize import create_contact_sheets
 from wildlife_mlops.device import DeviceSelectionError, collect_device_summary
 from wildlife_mlops.doctor import run_doctor
+from wildlife_mlops.maintenance import MaintenanceError, practice_mlflow_maintenance
 from wildlife_mlops.overfit import (
     OverfitDiagnosticError,
     load_overfit_config,
@@ -218,6 +219,12 @@ def build_parser() -> argparse.ArgumentParser:
     storage_parser.add_argument("--tracking-uri", default="http://127.0.0.1:5001")
     storage_parser.add_argument("--environment-file", type=Path, default=Path(".env"))
     storage_parser.add_argument("--artifact-bytes", type=int, default=1_048_576)
+    maintenance_parser = subparsers.add_parser(
+        "practice-mlflow-maintenance",
+        help="Back up, migrate, restore, and verify local MLflow storage.",
+    )
+    maintenance_parser.add_argument("--tracking-uri", default="http://127.0.0.1:5001")
+    maintenance_parser.add_argument("--environment-file", type=Path, default=Path(".env"))
     return parser
 
 
@@ -280,6 +287,17 @@ def main() -> int:
             print(f"Command failed: {error}")
             return 1
         print(f"Verified MLflow storage responsibilities: {storage_result.report_path}")
+        return 0
+
+    if args.command == "practice-mlflow-maintenance":
+        try:
+            maintenance_result = practice_mlflow_maintenance(
+                Path.cwd(), args.tracking_uri, args.environment_file
+            )
+        except MaintenanceError as error:
+            print(f"Command failed: {error}")
+            return 1
+        print(f"Verified MLflow backup and restore: {maintenance_result.report_path}")
         return 0
 
     try:

@@ -112,7 +112,8 @@ class MLflowRunLogger:
             self.client.log_artifacts(str(run_dir), artifact_path="training-output")
         except Exception as error:
             raise MLflowTrackingError(
-                f"Unable to log training artifacts to MLflow: {error}"
+                "Training metrics were logged, but artifact upload failed. "
+                f"The MLflow run is partial: {error}"
             ) from error
 
 

@@ -103,6 +103,25 @@ def test_mlflow_logging_records_parameters_metrics_and_artifacts(tmp_path: Path)
     assert fake_mlflow.artifact_path == "training-output"
 
 
+def test_mlflow_artifact_failure_reports_a_partial_run(tmp_path: Path) -> None:
+    run_dir = tmp_path / "smoke-run"
+    run_dir.mkdir()
+    (run_dir / "results.csv").write_text("epoch,train/loss\n0,1.5\n", encoding="utf-8")
+    fake_mlflow = FailingArtifactMLflow()
+
+    with pytest.raises(MLflowTrackingError, match="metrics were logged.*run is partial"):
+        log_smoke_run(
+            run_dir,
+            {"epochs": 1},
+            _lineage_tags(),
+            "http://127.0.0.1:5000",
+            "wildlife-smoke",
+            fake_mlflow,
+        )
+
+    assert fake_mlflow.metrics == {"terminal/train/loss": 1.5}
+
+
 def test_ultralytics_mlflow_callbacks_are_removed_without_affecting_others() -> None:
     def normal_callback() -> None:
         return None
@@ -251,6 +270,13 @@ class FakeMLflow:
     def log_artifacts(self, source: str, artifact_path: str) -> None:
         self.artifact_source = Path(source)
         self.artifact_path = artifact_path
+
+
+class FailingArtifactMLflow(FakeMLflow):
+    """MLflow stand-in that accepts metrics but rejects artifact uploads."""
+
+    def log_artifacts(self, source: str, artifact_path: str) -> None:
+        raise RuntimeError("invalid artifact credential")
 
 
 def _create_inputs(tmp_path: Path) -> tuple[SmokeTrainConfig, DatasetConfig, DeviceSummary]:
