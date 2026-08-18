@@ -105,6 +105,21 @@ def build_parser() -> argparse.ArgumentParser:
         default="wildlife-smoke",
         help="MLflow experiment to receive the smoke-training run.",
     )
+    smoke_parser.add_argument(
+        "--parent-run-id",
+        default="not_applicable",
+        help="MLflow parent run ID for a retraining or comparison run.",
+    )
+    smoke_parser.add_argument(
+        "--trigger-type",
+        default="manual",
+        help="Reason that started this training run.",
+    )
+    smoke_parser.add_argument(
+        "--trigger-id",
+        default="local-cli",
+        help="Identifier for the training trigger.",
+    )
     baseline_parser = subparsers.add_parser(
         "train-baseline", help="Train the first full-data baseline."
     )
@@ -295,6 +310,9 @@ def main() -> int:
                 getattr(ultralytics, "YOLO"),
                 args.tracking_uri,
                 args.experiment_name,
+                args.parent_run_id,
+                args.trigger_type,
+                args.trigger_id,
             )
             print(f"Wrote smoke-training artifacts: {run_dir}")
         elif args.command == "train-baseline":

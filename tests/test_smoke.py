@@ -10,12 +10,16 @@ from wildlife_mlops.smoke import (
     SmokeTrainConfig,
     SmokeTrainError,
     _disable_ultralytics_mlflow_callbacks,
+    _sha256_file,
     run_smoke_train,
 )
 from wildlife_mlops.tracking import (
+    REQUIRED_LINEAGE_TAGS,
     MLflowRunLogger,
+    MLflowTrackingError,
     epoch_metrics,
     log_smoke_run,
+    validate_lineage_tags,
     write_smoke_run_report,
 )
 
@@ -80,6 +84,7 @@ def test_mlflow_logging_records_parameters_metrics_and_artifacts(tmp_path: Path)
     run_id = log_smoke_run(
         run_dir,
         {"epochs": 1, "seed": 7},
+        _lineage_tags(),
         "http://127.0.0.1:5000",
         "wildlife-smoke",
         fake_mlflow,
@@ -89,6 +94,7 @@ def test_mlflow_logging_records_parameters_metrics_and_artifacts(tmp_path: Path)
     assert fake_mlflow.tracking_uri == "http://127.0.0.1:5000"
     assert fake_mlflow.experiment_name == "wildlife-smoke"
     assert fake_mlflow.parameters == {"epochs": "1", "seed": "7"}
+    assert fake_mlflow.tags == _lineage_tags()
     assert fake_mlflow.metrics == {
         "terminal/train/loss": 1.5,
         "terminal/metrics/mAP50_B_": 0.25,
@@ -137,6 +143,7 @@ def test_epoch_callback_logs_each_step_once() -> None:
         "wildlife-smoke",
         "smoke-run",
         {"epochs": 1},
+        _lineage_tags(),
     )
 
     with logger:
@@ -146,6 +153,24 @@ def test_epoch_callback_logs_each_step_once() -> None:
     assert len(fake_mlflow.metric_calls) == 1
     assert fake_mlflow.metric_calls[0][1] == 0
     assert fake_mlflow.metric_calls[0][0]["validation/map50_95"] == 0.5
+
+
+def test_lineage_release_check_rejects_missing_required_tag() -> None:
+    tags = _lineage_tags()
+    del tags["lineage.git_commit"]
+
+    with pytest.raises(
+        MLflowTrackingError, match="Lineage release check failed; missing: lineage.git_commit"
+    ):
+        validate_lineage_tags(tags)
+
+
+def test_sha256_file_rejects_empty_files(tmp_path: Path) -> None:
+    empty_file = tmp_path / "empty.txt"
+    empty_file.touch()
+
+    with pytest.raises(SmokeTrainError, match="empty lineage file"):
+        _sha256_file(empty_file)
 
 
 class CallbackModel:
@@ -197,6 +222,7 @@ class FakeMLflow:
         self.tracking_uri = ""
         self.experiment_name = ""
         self.parameters: dict[str, str] = {}
+        self.tags: dict[str, str] = {}
         self.metrics: dict[str, float] = {}
         self.metric_calls: list[tuple[dict[str, float], int | None]] = []
         self.artifact_source = Path()
@@ -214,6 +240,9 @@ class FakeMLflow:
 
     def log_params(self, parameters: dict[str, str]) -> None:
         self.parameters = parameters
+
+    def set_tags(self, tags: dict[str, str]) -> None:
+        self.tags = tags
 
     def log_metrics(self, metrics: dict[str, float], step: int | None = None) -> None:
         self.metrics = metrics
@@ -276,3 +305,8 @@ def _create_inputs(tmp_path: Path) -> tuple[SmokeTrainConfig, DatasetConfig, Dev
         mps_fallback_setting="unset",
     )
     return config, dataset_config, device_summary
+
+
+def _lineage_tags() -> dict[str, str]:
+    """Create complete fake provenance for MLflow tracking tests."""
+    return {name: "known" for name in REQUIRED_LINEAGE_TAGS}

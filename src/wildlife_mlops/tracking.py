@@ -14,6 +14,31 @@ class MLflowTrackingError(RuntimeError):
     """Raised when a completed training run cannot be recorded in MLflow."""
 
 
+REQUIRED_LINEAGE_TAGS = frozenset(
+    {
+        "lineage.git_commit",
+        "lineage.git_dirty",
+        "lineage.dvc_revision",
+        "lineage.source_archive_sha256",
+        "lineage.prepared_manifest_sha256",
+        "lineage.config_sha256",
+        "lineage.random_seed",
+        "lineage.base_weights_name",
+        "lineage.base_weights_sha256",
+        "runtime.python_version",
+        "runtime.pytorch_version",
+        "runtime.ultralytics_version",
+        "runtime.os",
+        "runtime.architecture",
+        "runtime.device",
+        "execution.training_container_digest",
+        "lineage.parent_run_id",
+        "trigger.type",
+        "trigger.id",
+    }
+)
+
+
 @dataclass
 class MLflowRunLogger:
     """One explicit MLflow run that receives completed and per-epoch evidence."""
@@ -23,17 +48,20 @@ class MLflowRunLogger:
     experiment_name: str
     run_name: str
     parameters: dict[str, object]
+    lineage_tags: dict[str, str]
     _active_run: Any | None = None
     _logged_epoch_steps: set[int] = field(default_factory=set)
 
     def __enter__(self) -> MLflowRunLogger:
         """Start the configured MLflow run and record its resolved parameters."""
         try:
+            validate_lineage_tags(self.lineage_tags)
             self.client.set_tracking_uri(self.tracking_uri)
             self.client.set_experiment(self.experiment_name)
             self._active_run = self.client.start_run(run_name=self.run_name)
             self._active_run.__enter__()
             self.client.log_params({name: str(value) for name, value in self.parameters.items()})
+            self.client.set_tags(self.lineage_tags)
         except Exception as error:
             raise MLflowTrackingError(
                 f"Unable to start MLflow run at {self.tracking_uri}: {error}"
@@ -91,6 +119,7 @@ class MLflowRunLogger:
 def start_smoke_run(
     run_dir: Path,
     config: dict[str, object],
+    lineage_tags: dict[str, str],
     tracking_uri: str,
     experiment_name: str,
     mlflow_client: Any | None = None,
@@ -106,7 +135,22 @@ def start_smoke_run(
         except ImportError as error:
             raise MLflowTrackingError("MLflow is not installed") from error
         mlflow_client = mlflow
-    return MLflowRunLogger(mlflow_client, tracking_uri, experiment_name, run_dir.name, config)
+    return MLflowRunLogger(
+        mlflow_client, tracking_uri, experiment_name, run_dir.name, config, lineage_tags
+    )
+
+
+def validate_lineage_tags(tags: dict[str, str]) -> None:
+    """Fail the lineage release check when a required value is missing or blank."""
+    missing = REQUIRED_LINEAGE_TAGS - tags.keys()
+    blank = sorted(name for name in REQUIRED_LINEAGE_TAGS if not tags.get(name, "").strip())
+    if missing or blank:
+        details: list[str] = []
+        if missing:
+            details.append(f"missing: {', '.join(sorted(missing))}")
+        if blank:
+            details.append(f"blank: {', '.join(blank)}")
+        raise MLflowTrackingError("Lineage release check failed; " + "; ".join(details))
 
 
 def terminal_metrics(results_path: Path) -> dict[str, float]:
@@ -223,12 +267,15 @@ def write_smoke_run_report(run_dir: Path, config: dict[str, object]) -> Path:
 def log_smoke_run(
     run_dir: Path,
     config: dict[str, object],
+    lineage_tags: dict[str, str],
     tracking_uri: str,
     experiment_name: str,
     mlflow_client: Any | None = None,
 ) -> str:
     """Log a finished smoke run's metadata, terminal metrics, and local artifacts."""
-    with start_smoke_run(run_dir, config, tracking_uri, experiment_name, mlflow_client) as tracker:
+    with start_smoke_run(
+        run_dir, config, lineage_tags, tracking_uri, experiment_name, mlflow_client
+    ) as tracker:
         tracker.log_terminal_metrics(run_dir / "results.csv")
         tracker.log_artifacts(run_dir)
         return tracker.run_id

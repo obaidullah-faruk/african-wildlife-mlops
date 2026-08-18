@@ -46,6 +46,10 @@ MLflow records aggregate epoch metrics with zero-based MLflow steps: `epoch`,
 `validation/{precision,recall,map50,map50_95}`. These names deliberately avoid
 per-class metric series.
 
+Each tracked run also carries MLflow tags that identify its Git state, data source,
+configuration, base weights, local runtime, and trigger. `not_applicable` means
+the local run did not use DVC, a prepared-data manifest, or a training container.
+
 ## Data commands
 
 ```sh
