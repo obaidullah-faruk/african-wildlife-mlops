@@ -135,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override runtime.requested_device for this training run.",
     )
+    _add_mlflow_arguments(baseline_parser, default_experiment="wildlife-baseline-comparison")
     evaluation_parser = subparsers.add_parser(
         "evaluate-baseline", help="Evaluate one pinned baseline on validation data."
     )
@@ -164,6 +165,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
         help="Override runtime.requested_device for this experiment.",
+    )
+    _add_mlflow_arguments(
+        experiment_parser,
+        default_experiment="wildlife-baseline-comparison",
+        include_context=False,
     )
     test_evaluation_parser = subparsers.add_parser(
         "evaluate-release-test",
@@ -205,6 +211,23 @@ def build_parser() -> argparse.ArgumentParser:
         "predict-pretrained", help="Predict a fixed image sample with pinned weights."
     )
     return parser
+
+
+def _add_mlflow_arguments(
+    parser: argparse.ArgumentParser, default_experiment: str, include_context: bool = True
+) -> None:
+    """Add the shared MLflow run context accepted by tracked training commands."""
+    parser.add_argument(
+        "--tracking-uri", default="http://127.0.0.1:5000", help="MLflow server URI."
+    )
+    parser.add_argument(
+        "--experiment-name", default=default_experiment, help="MLflow experiment name."
+    )
+    if not include_context:
+        return
+    parser.add_argument("--parent-run-id", default="not_applicable")
+    parser.add_argument("--trigger-type", default="manual")
+    parser.add_argument("--trigger-id", default="local-cli")
 
 
 def main() -> int:
@@ -328,6 +351,11 @@ def main() -> int:
                 Path.cwd(),
                 device_summary,
                 getattr(ultralytics, "YOLO"),
+                args.tracking_uri,
+                args.experiment_name,
+                args.parent_run_id,
+                args.trigger_type,
+                args.trigger_id,
             )
             print(f"Wrote baseline-training artifacts: {run_dir}")
         elif args.command == "evaluate-baseline":
@@ -358,10 +386,13 @@ def main() -> int:
                 Path.cwd(),
                 device_summary,
                 getattr(ultralytics, "YOLO"),
+                args.tracking_uri,
+                args.experiment_name,
             )
             print(f"Wrote controlled experiment artifacts: {experiment_run}")
             print(f"Wrote comparison: {comparison_path}")
-            print(f"Froze selected baseline: {release_path}")
+            if release_path is not None:
+                print(f"Froze selected baseline: {release_path}")
         elif args.command == "evaluate-release-test":
             device_summary = collect_device_summary(
                 args.device or config.project.runtime.requested_device

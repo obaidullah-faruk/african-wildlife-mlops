@@ -50,6 +50,22 @@ Each tracked run also carries MLflow tags that identify its Git state, data sour
 configuration, base weights, local runtime, and trigger. `not_applicable` means
 the local run did not use DVC, a prepared-data manifest, or a training container.
 
+## Comparing a baseline and variant
+
+Start MLflow first. Then train and validate a tracked baseline. Its output folder
+contains `mlflow-run.json`, which links it to its MLflow run.
+
+```sh
+make train-baseline
+make evaluate-baseline RUN_DIR=artifacts/baseline/<run-directory>
+make run-experiment BASELINE_RUN=artifacts/baseline/<run-directory>
+```
+
+Both runs appear in `wildlife-baseline-comparison`. The controlled variant changes
+only image size. The command writes `mlflow-api-comparison.json` beside the local
+comparison report. The selected MLflow run receives `selection.status` and
+`selection.reason` tags. Selection is not a production promotion.
+
 ## Data commands
 
 ```sh

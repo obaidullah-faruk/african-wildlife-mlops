@@ -273,9 +273,70 @@ def log_smoke_run(
     mlflow_client: Any | None = None,
 ) -> str:
     """Log a finished smoke run's metadata, terminal metrics, and local artifacts."""
+    return log_training_run(
+        run_dir, config, lineage_tags, tracking_uri, experiment_name, mlflow_client
+    )
+
+
+def log_training_run(
+    run_dir: Path,
+    config: dict[str, object],
+    lineage_tags: dict[str, str],
+    tracking_uri: str,
+    experiment_name: str,
+    mlflow_client: Any | None = None,
+) -> str:
+    """Log one completed local training run into the selected MLflow experiment."""
     with start_smoke_run(
         run_dir, config, lineage_tags, tracking_uri, experiment_name, mlflow_client
     ) as tracker:
         tracker.log_terminal_metrics(run_dir / "results.csv")
         tracker.log_artifacts(run_dir)
         return tracker.run_id
+
+
+def export_comparison_report(
+    tracking_uri: str,
+    control_run_id: str,
+    variant_run_id: str,
+    selected_run_id: str,
+    selection_reason: str,
+    destination: Path,
+) -> Path:
+    """Export two MLflow API run records and tag the selected comparison result."""
+    try:
+        import mlflow
+
+        mlflow.set_tracking_uri(tracking_uri)
+        client = mlflow.MlflowClient(tracking_uri=tracking_uri)
+        control = client.get_run(control_run_id)
+        variant = client.get_run(variant_run_id)
+        client.set_tag(selected_run_id, "selection.status", "selected_for_comparison")
+        client.set_tag(selected_run_id, "selection.reason", selection_reason)
+    except Exception as error:
+        raise MLflowTrackingError(f"Unable to compare MLflow runs: {error}") from error
+
+    report = {
+        "source": "MLflow Tracking API",
+        "control": _api_run_summary(control),
+        "variant": _api_run_summary(variant),
+        "selection": {
+            "selected_run_id": selected_run_id,
+            "reason": selection_reason,
+            "status": "selected_for_comparison",
+        },
+    }
+    destination.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return destination
+
+
+def _api_run_summary(run: Any) -> dict[str, object]:
+    """Return the comparable fields returned by the MLflow Tracking API."""
+    return {
+        "run_id": str(run.info.run_id),
+        "parameters": dict(run.data.params),
+        "metrics": dict(run.data.metrics),
+        "lineage_tags": {
+            key: value for key, value in run.data.tags.items() if key.startswith("lineage.")
+        },
+    }

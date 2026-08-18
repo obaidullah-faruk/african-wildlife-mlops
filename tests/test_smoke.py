@@ -6,11 +6,11 @@ import pytest
 
 from wildlife_mlops.data.config import DatasetConfig
 from wildlife_mlops.device import DeviceSummary
+from wildlife_mlops.lineage import LineageError, sha256_file
 from wildlife_mlops.smoke import (
     SmokeTrainConfig,
     SmokeTrainError,
     _disable_ultralytics_mlflow_callbacks,
-    _sha256_file,
     run_smoke_train,
 )
 from wildlife_mlops.tracking import (
@@ -169,8 +169,8 @@ def test_sha256_file_rejects_empty_files(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty.txt"
     empty_file.touch()
 
-    with pytest.raises(SmokeTrainError, match="empty lineage file"):
-        _sha256_file(empty_file)
+    with pytest.raises(LineageError, match="empty lineage file"):
+        sha256_file(empty_file)
 
 
 class CallbackModel:

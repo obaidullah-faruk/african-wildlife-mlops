@@ -29,6 +29,8 @@ from wildlife_mlops.data.validate import (
     parse_yolo_label,
 )
 from wildlife_mlops.device import DeviceSummary
+from wildlife_mlops.lineage import LineageError, collect_local_lineage_tags
+from wildlife_mlops.tracking import MLflowTrackingError, export_comparison_report, log_training_run
 
 
 class BaselineConfig(BaseModel):
@@ -84,6 +86,11 @@ def run_baseline_train(
     project_root: Path,
     device_summary: DeviceSummary,
     model_factory: Callable[[str], Any],
+    tracking_uri: str | None = None,
+    experiment_name: str = "wildlife-baseline-comparison",
+    parent_run_id: str = "not_applicable",
+    trigger_type: str = "manual",
+    trigger_id: str = "local-cli",
 ) -> Path:
     """Train the first baseline and save reproducible runtime and curve artifacts."""
     return _run_training(
@@ -93,6 +100,11 @@ def run_baseline_train(
         device_summary,
         model_factory,
         run_prefix="baseline",
+        tracking_uri=tracking_uri,
+        experiment_name=experiment_name,
+        parent_run_id=parent_run_id,
+        trigger_type=trigger_type,
+        trigger_id=trigger_id,
     )
 
 
@@ -103,6 +115,11 @@ def _run_training(
     device_summary: DeviceSummary,
     model_factory: Callable[[str], Any],
     run_prefix: str,
+    tracking_uri: str | None = None,
+    experiment_name: str = "wildlife-baseline-comparison",
+    parent_run_id: str = "not_applicable",
+    trigger_type: str = "manual",
+    trigger_id: str = "local-cli",
 ) -> Path:
     """Train one full-data configuration and save its evidence in a unique directory."""
     model_path = project_root / config.model_path
@@ -170,6 +187,29 @@ def _run_training(
         ),
     )
     analyze_training_curves(run_dir)
+    if tracking_uri is not None:
+        try:
+            lineage_tags = collect_local_lineage_tags(
+                project_root,
+                dataset_config,
+                run_dir / "resolved-config.json",
+                model_path,
+                config.seed,
+                device_summary,
+                parent_run_id,
+                trigger_type,
+                trigger_id,
+            )
+            run_id = log_training_run(
+                run_dir,
+                config.model_dump(mode="json"),
+                lineage_tags,
+                tracking_uri,
+                experiment_name,
+            )
+        except (LineageError, MLflowTrackingError) as error:
+            raise BaselineError(str(error)) from error
+        _write_json(run_dir / "mlflow-run.json", {"run_id": run_id})
     return run_dir
 
 
@@ -334,7 +374,9 @@ def run_controlled_experiment(
     project_root: Path,
     device_summary: DeviceSummary,
     model_factory: Callable[[str], Any],
-) -> tuple[Path, Path, Path]:
+    tracking_uri: str | None = None,
+    experiment_name: str = "wildlife-baseline-comparison",
+) -> tuple[Path, Path, Path | None]:
     """Train one image-size variant, compare validation results, and freeze a selection."""
     control_run_dir = _validated_run_directory(control_run_dir, project_root)
     if control_run_dir.parent.name != "baseline":
@@ -354,6 +396,13 @@ def run_controlled_experiment(
         device_summary,
         model_factory,
         run_prefix="experiment",
+        tracking_uri=tracking_uri,
+        experiment_name=experiment_name,
+        parent_run_id=(
+            _mlflow_run_id(control_run_dir) if tracking_uri is not None else "not_applicable"
+        ),
+        trigger_type="controlled_experiment",
+        trigger_id="image_size",
     )
     experiment_evaluation_dir = evaluate_baseline(
         experiment_run_dir,
@@ -403,12 +452,45 @@ def run_controlled_experiment(
             },
         },
     )
-    release_path = _freeze_selected_baseline(
-        selected_run_dir,
-        comparison_path,
-        project_root,
-    )
+    release_path: Path | None = None
+    if tracking_uri is not None:
+        selection_reason = (
+            "Variant has higher validation mAP50-95 than the control."
+            if supports_change
+            else "Control is retained because the variant did not improve validation mAP50-95."
+        )
+        try:
+            export_comparison_report(
+                tracking_uri,
+                _mlflow_run_id(control_run_dir),
+                _mlflow_run_id(experiment_run_dir),
+                _mlflow_run_id(selected_run_dir),
+                selection_reason,
+                comparison_dir / "mlflow-api-comparison.json",
+            )
+        except MLflowTrackingError as error:
+            raise BaselineError(str(error)) from error
+    else:
+        release_path = _freeze_selected_baseline(
+            selected_run_dir,
+            comparison_path,
+            project_root,
+        )
     return experiment_run_dir, comparison_path, release_path
+
+
+def _mlflow_run_id(run_dir: Path) -> str:
+    """Read the MLflow run ID recorded beside one local training output."""
+    try:
+        contents = json.loads((run_dir / "mlflow-run.json").read_text(encoding="utf-8"))
+        run_id = contents["run_id"]
+    except (KeyError, OSError, TypeError, json.JSONDecodeError) as error:
+        raise BaselineError(
+            f"Tracked comparison requires MLflow run metadata in {run_dir / 'mlflow-run.json'}"
+        ) from error
+    if not isinstance(run_id, str) or not run_id:
+        raise BaselineError(f"Invalid MLflow run ID in {run_dir / 'mlflow-run.json'}")
+    return run_id
 
 
 def evaluate_selected_baseline_on_test(

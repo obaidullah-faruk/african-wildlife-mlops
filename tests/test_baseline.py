@@ -8,8 +8,10 @@ from wildlife_mlops.baseline import (
     _iou,
     _json_default,
     _match_detections,
+    _mlflow_run_id,
     _release_test_report_exists,
 )
+from wildlife_mlops.tracking import _api_run_summary
 
 
 def test_controlled_experiment_allows_only_an_image_size_change() -> None:
@@ -74,3 +76,37 @@ def test_json_default_normalizes_scalar_with_item_method() -> None:
             return 7
 
     assert _json_default(Scalar()) == 7
+
+
+def test_mlflow_run_id_reads_the_local_tracking_link(tmp_path: Path) -> None:
+    run_dir = tmp_path / "artifacts" / "baseline" / "baseline-run"
+    run_dir.mkdir(parents=True)
+    (run_dir / "mlflow-run.json").write_text('{"run_id": "run-123"}\n', encoding="utf-8")
+
+    assert _mlflow_run_id(run_dir) == "run-123"
+
+
+def test_mlflow_api_summary_keeps_parameters_metrics_and_lineage_tags() -> None:
+    run = ApiRun()
+
+    assert _api_run_summary(run) == {
+        "run_id": "run-123",
+        "parameters": {"image_size": "192"},
+        "metrics": {"terminal/metrics/mAP50-95_B_": 0.4},
+        "lineage_tags": {"lineage.git_commit": "commit-123"},
+    }
+
+
+class ApiRun:
+    """Small stand-in for the MLflow run object returned by its API."""
+
+    class Info:
+        run_id = "run-123"
+
+    class Data:
+        params = {"image_size": "192"}
+        metrics = {"terminal/metrics/mAP50-95_B_": 0.4}
+        tags = {"lineage.git_commit": "commit-123", "trigger.type": "manual"}
+
+    info = Info()
+    data = Data()

@@ -26,7 +26,7 @@ mlflow-server:
 	$(UV) run mlflow server --host 127.0.0.1 --port 5000 --backend-store-uri "sqlite:///$(CURDIR)/artifacts/mlflow/mlflow.db" --default-artifact-root "file://$(CURDIR)/artifacts/mlflow/artifacts"
 
 train-baseline:
-	$(UV) run wildlife-mlops train-baseline
+	$(UV) run wildlife-mlops train-baseline --tracking-uri "$(MLFLOW_TRACKING_URI)" --experiment-name "wildlife-baseline-comparison"
 
 evaluate-baseline:
 	@test -n "$(RUN_DIR)" || (echo "RUN_DIR is required, for example: make evaluate-baseline RUN_DIR=artifacts/baseline/<run>"; exit 2)
@@ -34,7 +34,7 @@ evaluate-baseline:
 
 run-experiment:
 	@test -n "$(BASELINE_RUN)" || (echo "BASELINE_RUN is required, for example: make run-experiment BASELINE_RUN=artifacts/baseline/<run>"; exit 2)
-	$(UV) run wildlife-mlops run-experiment --baseline-run "$(BASELINE_RUN)"
+	$(UV) run wildlife-mlops run-experiment --baseline-run "$(BASELINE_RUN)" --tracking-uri "$(MLFLOW_TRACKING_URI)" --experiment-name "wildlife-baseline-comparison"
 
 evaluate-release-test:
 	$(UV) run wildlife-mlops evaluate-release-test

@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import platform
-import subprocess
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -19,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from wildlife_mlops.data.config import DatasetConfig
 from wildlife_mlops.data.validate import label_path_for_image
 from wildlife_mlops.device import DeviceSummary
+from wildlife_mlops.lineage import LineageError, collect_local_lineage_tags
 from wildlife_mlops.tracking import MLflowRunLogger, start_smoke_run, write_smoke_run_report
 
 
@@ -110,17 +109,20 @@ def run_smoke_train(
     resolved_config_path = run_dir / "resolved-config.json"
     tracker: MLflowRunLogger | None = None
     if tracking_uri is not None:
-        lineage_tags = _build_lineage_tags(
-            project_root,
-            dataset_config,
-            config,
-            resolved_config_path,
-            model_path,
-            device_summary,
-            parent_run_id,
-            trigger_type,
-            trigger_id,
-        )
+        try:
+            lineage_tags = collect_local_lineage_tags(
+                project_root,
+                dataset_config,
+                resolved_config_path,
+                model_path,
+                config.seed,
+                device_summary,
+                parent_run_id,
+                trigger_type,
+                trigger_id,
+            )
+        except LineageError as error:
+            raise SmokeTrainError(str(error)) from error
         tracker = start_smoke_run(
             run_dir, config.model_dump(mode="json"), lineage_tags, tracking_uri, experiment_name
         )
@@ -136,60 +138,6 @@ def run_smoke_train(
     return run_dir
 
 
-def _build_lineage_tags(
-    project_root: Path,
-    dataset_config: DatasetConfig,
-    config: SmokeTrainConfig,
-    resolved_config_path: Path,
-    model_path: Path,
-    device_summary: DeviceSummary,
-    parent_run_id: str,
-    trigger_type: str,
-    trigger_id: str,
-) -> dict[str, str]:
-    """Collect the provenance needed to explain one local smoke-training run."""
-    return {
-        "lineage.git_commit": _git_output(project_root, "rev-parse", "HEAD"),
-        "lineage.git_dirty": str(bool(_git_output(project_root, "status", "--porcelain"))).lower(),
-        "lineage.dvc_revision": "not_applicable",
-        "lineage.source_archive_sha256": dataset_config.expected_sha256,
-        "lineage.prepared_manifest_sha256": "not_applicable",
-        "lineage.config_sha256": _sha256_file(resolved_config_path),
-        "lineage.random_seed": str(config.seed),
-        "lineage.base_weights_name": model_path.name,
-        "lineage.base_weights_sha256": _sha256_file(model_path),
-        "runtime.python_version": sys.version.split()[0],
-        "runtime.pytorch_version": device_summary.pytorch_version,
-        "runtime.ultralytics_version": device_summary.ultralytics_version,
-        "runtime.os": platform.platform(),
-        "runtime.architecture": platform.machine(),
-        "runtime.device": device_summary.device,
-        "execution.training_container_digest": "not_applicable",
-        "lineage.parent_run_id": parent_run_id,
-        "trigger.type": trigger_type,
-        "trigger.id": trigger_id,
-    }
-
-
-def _git_output(project_root: Path, *arguments: str) -> str:
-    """Run one read-only Git command and return its trimmed output."""
-    try:
-        return subprocess.check_output(
-            ["git", *arguments], cwd=project_root, text=True, stderr=subprocess.PIPE
-        ).strip()
-    except (OSError, subprocess.CalledProcessError) as error:
-        raise SmokeTrainError(f"Unable to collect Git lineage: {error}") from error
-
-
-def _sha256_file(path: Path) -> str:
-    """Return the SHA-256 checksum for a required nonempty file."""
-    try:
-        contents = path.read_bytes()
-    except OSError as error:
-        raise SmokeTrainError(f"Unable to checksum lineage file {path}: {error}") from error
-    if not contents:
-        raise SmokeTrainError(f"Unable to checksum empty lineage file: {path}")
-    return hashlib.sha256(contents).hexdigest()
 
 
 def _train_smoke_model(
