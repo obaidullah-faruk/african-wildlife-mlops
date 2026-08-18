@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from wildlife_mlops.data.config import DatasetConfig
 from wildlife_mlops.data.validate import label_path_for_image
 from wildlife_mlops.device import DeviceSummary
-from wildlife_mlops.tracking import log_smoke_run, write_smoke_run_report
+from wildlife_mlops.tracking import MLflowRunLogger, start_smoke_run, write_smoke_run_report
 
 
 class SmokeTrainConfig(BaseModel):
@@ -104,6 +104,32 @@ def run_smoke_train(
 
     model = model_factory(str(model_path))
     _disable_ultralytics_mlflow_callbacks(model)
+    tracker = (
+        start_smoke_run(run_dir, config.model_dump(mode="json"), tracking_uri, experiment_name)
+        if tracking_uri is not None
+        else None
+    )
+    if tracker is not None:
+        with tracker:
+            _train_smoke_model(model, config, data_path, run_dir, device_summary, tracker)
+            _complete_smoke_run(run_dir, config, tracker)
+    else:
+        _train_smoke_model(model, config, data_path, run_dir, device_summary)
+        _complete_smoke_run(run_dir, config)
+    return run_dir
+
+
+def _train_smoke_model(
+    model: Any,
+    config: SmokeTrainConfig,
+    data_path: Path,
+    run_dir: Path,
+    device_summary: DeviceSummary,
+    tracker: MLflowRunLogger | None = None,
+) -> None:
+    """Train one smoke model and optionally record aggregate epoch metrics."""
+    if tracker is not None:
+        model.add_callback("on_fit_epoch_end", tracker.log_epoch)
     model.train(
         data=str(data_path),
         epochs=config.epochs,
@@ -122,6 +148,12 @@ def run_smoke_train(
         name=run_dir.name,
         exist_ok=True,
     )
+
+
+def _complete_smoke_run(
+    run_dir: Path, config: SmokeTrainConfig, tracker: MLflowRunLogger | None = None
+) -> None:
+    """Verify completed artifacts and send terminal evidence to MLflow when configured."""
     _require_artifacts(
         run_dir,
         (
@@ -136,9 +168,9 @@ def run_smoke_train(
     resolved_config = config.model_dump(mode="json")
     write_smoke_run_report(run_dir, resolved_config)
     _require_artifacts(run_dir, ("run-report.json",))
-    if tracking_uri is not None:
-        log_smoke_run(run_dir, resolved_config, tracking_uri, experiment_name)
-    return run_dir
+    if tracker is not None:
+        tracker.log_terminal_metrics(run_dir / "results.csv")
+        tracker.log_artifacts(run_dir)
 
 
 def _disable_ultralytics_mlflow_callbacks(model: Any) -> None:

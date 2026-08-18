@@ -12,7 +12,12 @@ from wildlife_mlops.smoke import (
     _disable_ultralytics_mlflow_callbacks,
     run_smoke_train,
 )
-from wildlife_mlops.tracking import log_smoke_run, write_smoke_run_report
+from wildlife_mlops.tracking import (
+    MLflowRunLogger,
+    epoch_metrics,
+    log_smoke_run,
+    write_smoke_run_report,
+)
 
 
 class FakeModel:
@@ -107,11 +112,67 @@ def test_ultralytics_mlflow_callbacks_are_removed_without_affecting_others() -> 
     assert model.callbacks["on_train_end"] == [normal_callback]
 
 
+def test_epoch_metrics_use_stable_aggregate_names_and_explicit_step() -> None:
+    trainer = EpochTrainer(epoch=1)
+
+    metrics = epoch_metrics(trainer, trainer.epoch)
+
+    assert metrics == {
+        "epoch": 2.0,
+        "train/box_loss": 1.5,
+        "train/cls_loss": 2.5,
+        "learning_rate/group_0": 0.01,
+        "validation/precision": 0.2,
+        "validation/recall": 0.3,
+        "validation/map50": 0.4,
+        "validation/map50_95": 0.5,
+    }
+
+
+def test_epoch_callback_logs_each_step_once() -> None:
+    fake_mlflow = FakeMLflow()
+    logger = MLflowRunLogger(
+        fake_mlflow,
+        "http://127.0.0.1:5000",
+        "wildlife-smoke",
+        "smoke-run",
+        {"epochs": 1},
+    )
+
+    with logger:
+        logger.log_epoch(EpochTrainer(epoch=0))
+        logger.log_epoch(EpochTrainer(epoch=0))
+
+    assert len(fake_mlflow.metric_calls) == 1
+    assert fake_mlflow.metric_calls[0][1] == 0
+    assert fake_mlflow.metric_calls[0][0]["validation/map50_95"] == 0.5
+
+
 class CallbackModel:
     """Minimal model exposing Ultralytics-style callbacks."""
 
     def __init__(self, callbacks: dict[str, list[object]]) -> None:
         self.callbacks = callbacks
+
+
+class EpochTrainer:
+    """Minimal callback object with aggregate training measurements."""
+
+    def __init__(self, epoch: int) -> None:
+        self.epoch = epoch
+        self.tloss = object()
+        self.lr = {"lr/pg0": 0.01}
+        self.metrics = {
+            "metrics/precision(B)": 0.2,
+            "metrics/recall(B)": 0.3,
+            "metrics/mAP50(B)": 0.4,
+            "metrics/mAP50-95(B)": 0.5,
+        }
+
+    def label_loss_items(self, losses: object, prefix: str) -> dict[str, float]:
+        assert losses is self.tloss
+        assert prefix == "train"
+        return {"train/box_loss": 1.5, "train/cls_loss": 2.5}
 
 
 class FakeRun:
@@ -137,6 +198,7 @@ class FakeMLflow:
         self.experiment_name = ""
         self.parameters: dict[str, str] = {}
         self.metrics: dict[str, float] = {}
+        self.metric_calls: list[tuple[dict[str, float], int | None]] = []
         self.artifact_source = Path()
         self.artifact_path = ""
 
@@ -153,8 +215,9 @@ class FakeMLflow:
     def log_params(self, parameters: dict[str, str]) -> None:
         self.parameters = parameters
 
-    def log_metrics(self, metrics: dict[str, float]) -> None:
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None) -> None:
         self.metrics = metrics
+        self.metric_calls.append((metrics, step))
 
     def log_artifacts(self, source: str, artifact_path: str) -> None:
         self.artifact_source = Path(source)

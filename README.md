@@ -41,6 +41,11 @@ make train-smoke
 
 The local SQLite database and file artifacts are stored under `artifacts/mlflow/`.
 
+MLflow records aggregate epoch metrics with zero-based MLflow steps: `epoch`,
+`train/<loss>`, `learning_rate/group_<n>`, and
+`validation/{precision,recall,map50,map50_95}`. These names deliberately avoid
+per-class metric series.
+
 ## Data commands
 
 ```sh
