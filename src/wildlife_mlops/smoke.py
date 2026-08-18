@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from wildlife_mlops.data.config import DatasetConfig
 from wildlife_mlops.data.validate import label_path_for_image
 from wildlife_mlops.device import DeviceSummary
+from wildlife_mlops.tracking import log_smoke_run, write_smoke_run_report
 
 
 class SmokeTrainConfig(BaseModel):
@@ -63,6 +64,8 @@ def run_smoke_train(
     project_root: Path,
     device_summary: DeviceSummary,
     model_factory: Callable[[str], Any],
+    tracking_uri: str | None = None,
+    experiment_name: str = "wildlife-smoke",
 ) -> Path:
     """Run one epoch from the immutable subset manifest and verify every expected artifact."""
     model_path = project_root / config.model_path
@@ -100,6 +103,7 @@ def run_smoke_train(
     _write_json(run_dir / "environment-summary.json", _environment_summary(device_summary))
 
     model = model_factory(str(model_path))
+    _disable_ultralytics_mlflow_callbacks(model)
     model.train(
         data=str(data_path),
         epochs=config.epochs,
@@ -129,7 +133,33 @@ def run_smoke_train(
             "results.csv",
         ),
     )
+    resolved_config = config.model_dump(mode="json")
+    write_smoke_run_report(run_dir, resolved_config)
+    _require_artifacts(run_dir, ("run-report.json",))
+    if tracking_uri is not None:
+        log_smoke_run(run_dir, resolved_config, tracking_uri, experiment_name)
     return run_dir
+
+
+def _disable_ultralytics_mlflow_callbacks(model: Any) -> None:
+    """Keep MLflow logging owned by this module instead of Ultralytics callbacks."""
+    try:
+        from ultralytics.utils import SETTINGS
+
+        SETTINGS["mlflow"] = False
+    except ImportError:
+        pass
+    callbacks = getattr(model, "callbacks", None)
+    if not isinstance(callbacks, dict):
+        return
+    for event, functions in callbacks.items():
+        if isinstance(functions, list):
+            callbacks[event] = [
+                function
+                for function in functions
+                if getattr(function, "__module__", "")
+                != "ultralytics.utils.callbacks.mlflow"
+            ]
 
 
 def _load_manifest_images(

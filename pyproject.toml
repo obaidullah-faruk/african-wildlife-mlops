@@ -16,6 +16,7 @@ dependencies = [
   "PyYAML>=6.0.2,<7",
   "torch>=2.6,<3",
   "ultralytics==8.4.0",
+  "mlflow>=3.0,<4",
 ]
 
 [dependency-groups]

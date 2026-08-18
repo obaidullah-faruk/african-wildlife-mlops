@@ -23,6 +23,24 @@ make typecheck
 make test
 ```
 
+## Local experiment tracking
+
+In one terminal, start the disposable local MLflow server:
+
+```sh
+make mlflow-server
+```
+
+In another terminal, run the tracked smoke training and then open
+<http://127.0.0.1:5000>. Select the `wildlife-smoke` experiment and inspect the
+parameters, terminal metrics, and `training-output` artifacts.
+
+```sh
+make train-smoke
+```
+
+The local SQLite database and file artifacts are stored under `artifacts/mlflow/`.
+
 ## Data commands
 
 ```sh

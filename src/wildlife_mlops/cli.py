@@ -35,6 +35,7 @@ from wildlife_mlops.pretrained import (
     run_pretrained_inference,
 )
 from wildlife_mlops.smoke import SmokeTrainError, load_smoke_train_config, run_smoke_train
+from wildlife_mlops.tracking import MLflowTrackingError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -93,6 +94,16 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto", "mps", "cuda", "cpu"),
         default=None,
         help="Override runtime.requested_device for this training run.",
+    )
+    smoke_parser.add_argument(
+        "--tracking-uri",
+        default="http://127.0.0.1:5000",
+        help="Local MLflow tracking server URI.",
+    )
+    smoke_parser.add_argument(
+        "--experiment-name",
+        default="wildlife-smoke",
+        help="MLflow experiment to receive the smoke-training run.",
     )
     baseline_parser = subparsers.add_parser(
         "train-baseline", help="Train the first full-data baseline."
@@ -282,6 +293,8 @@ def main() -> int:
                 Path.cwd(),
                 device_summary,
                 getattr(ultralytics, "YOLO"),
+                args.tracking_uri,
+                args.experiment_name,
             )
             print(f"Wrote smoke-training artifacts: {run_dir}")
         elif args.command == "train-baseline":
@@ -364,6 +377,7 @@ def main() -> int:
         PredictionError,
         PretrainedInferenceError,
         SmokeTrainError,
+        MLflowTrackingError,
         ValueError,
     ) as error:
         print(f"Command failed: {error}")
