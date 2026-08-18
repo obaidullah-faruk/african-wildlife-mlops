@@ -1,10 +1,11 @@
 UV := uv
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
-MLFLOW_TRACKING_URI ?= http://127.0.0.1:5000
+MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
 MLFLOW_EXPERIMENT ?= wildlife-smoke
+COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-server
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -21,9 +22,23 @@ train-overfit:
 train-smoke:
 	$(UV) run wildlife-mlops train-smoke --tracking-uri "$(MLFLOW_TRACKING_URI)" --experiment-name "$(MLFLOW_EXPERIMENT)"
 
-mlflow-server:
-	mkdir -p artifacts/mlflow/artifacts
-	$(UV) run mlflow server --host 127.0.0.1 --port 5000 --backend-store-uri "sqlite:///$(CURDIR)/artifacts/mlflow/mlflow.db" --default-artifact-root "file://$(CURDIR)/artifacts/mlflow/artifacts"
+mlflow-env-check:
+	@test -f .env || (echo ".env is required; copy .env.example to .env and set local passwords"; exit 2)
+	@awk -F= 'BEGIN { found = 0 } /^MINIO_ROOT_USER=/ { found = 1; if (length(substr($$0, length($$1) + 2)) < 3) { print "MINIO_ROOT_USER in .env must contain at least 3 characters"; exit 2 } } END { if (!found) { print "MINIO_ROOT_USER is required in .env"; exit 2 } }' .env
+	@awk -F= 'BEGIN { found = 0 } /^MINIO_ROOT_PASSWORD=/ { found = 1; if (length(substr($$0, length($$1) + 2)) < 8) { print "MINIO_ROOT_PASSWORD in .env must contain at least 8 characters"; exit 2 } } END { if (!found) { print "MINIO_ROOT_PASSWORD is required in .env"; exit 2 } }' .env
+
+mlflow-up:
+	@$(MAKE) --no-print-directory mlflow-env-check
+	$(COMPOSE) up -d
+
+mlflow-down:
+	@test -f .env || (echo ".env is required; copy .env.example to .env and set local passwords"; exit 2)
+	$(COMPOSE) down
+
+mlflow-smoke:
+	@$(MAKE) --no-print-directory mlflow-env-check
+	@attempt=0; until curl --fail --silent --show-error "$(MLFLOW_TRACKING_URI)/health" >/dev/null; do attempt=$$((attempt + 1)); test $$attempt -lt 30 || (echo "MLflow did not become healthy; run '$(COMPOSE) logs mlflow'"; exit 1); sleep 1; done
+	MLFLOW_TRACKING_URI="$(MLFLOW_TRACKING_URI)" $(UV) run python -c 'import os; import mlflow; mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"]); mlflow.set_experiment("mlflow-stack-smoke"); mlflow.start_run(); mlflow.log_text("MLflow artifact proxy is ready.\n", "smoke.txt"); mlflow.end_run(); print("MLflow tracking and artifact APIs are ready.")'
 
 train-baseline:
 	$(UV) run wildlife-mlops train-baseline --tracking-uri "$(MLFLOW_TRACKING_URI)" --experiment-name "wildlife-baseline-comparison"

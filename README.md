@@ -25,21 +25,39 @@ make test
 
 ## Local experiment tracking
 
-In one terminal, start the disposable local MLflow server:
+Create your local Compose credentials once. The values stay in `.env`.
 
 ```sh
-make mlflow-server
+cp .env.example .env
 ```
 
-In another terminal, run the tracked smoke training and then open
-<http://127.0.0.1:5000>. Select the `wildlife-smoke` experiment and inspect the
+Start MLflow, PostgreSQL, and MinIO. The MLflow server proxies artifact uploads
+to MinIO, so training clients only need the MLflow address.
+
+```sh
+make mlflow-up
+make mlflow-smoke
+```
+
+`mlflow-smoke` creates a tiny tracked run and uploads `smoke.txt` through the
+MLflow artifact proxy. This verifies both PostgreSQL and MinIO.
+
+Run the tracked smoke training and then open
+<http://127.0.0.1:5001>. Select the `wildlife-smoke` experiment and inspect the
 parameters, terminal metrics, and `training-output` artifacts.
 
 ```sh
 make train-smoke
 ```
 
-The local SQLite database and file artifacts are stored under `artifacts/mlflow/`.
+PostgreSQL stores MLflow metadata. MinIO stores artifacts. Browse MinIO at
+<http://127.0.0.1:9001> using the credentials from `.env`.
+
+Stop the local stack without deleting its named volumes:
+
+```sh
+make mlflow-down
+```
 
 MLflow records aggregate epoch metrics with zero-based MLflow steps: `epoch`,
 `train/<loss>`, `learning_rate/group_<n>`, and
