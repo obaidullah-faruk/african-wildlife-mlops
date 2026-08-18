@@ -5,7 +5,7 @@ MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
 MLFLOW_EXPERIMENT ?= wildlife-smoke
 COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke mlflow-storage-verify
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -39,6 +39,10 @@ mlflow-smoke:
 	@$(MAKE) --no-print-directory mlflow-env-check
 	@attempt=0; until curl --fail --silent --show-error "$(MLFLOW_TRACKING_URI)/health" >/dev/null; do attempt=$$((attempt + 1)); test $$attempt -lt 30 || (echo "MLflow did not become healthy; run '$(COMPOSE) logs mlflow'"; exit 1); sleep 1; done
 	MLFLOW_TRACKING_URI="$(MLFLOW_TRACKING_URI)" $(UV) run python -c 'import os; import mlflow; mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"]); mlflow.set_experiment("mlflow-stack-smoke"); mlflow.start_run(); mlflow.log_text("MLflow artifact proxy is ready.\n", "smoke.txt"); mlflow.end_run(); print("MLflow tracking and artifact APIs are ready.")'
+
+mlflow-storage-verify:
+	@$(MAKE) --no-print-directory mlflow-env-check
+	$(UV) run wildlife-mlops verify-mlflow-storage --tracking-uri "$(MLFLOW_TRACKING_URI)"
 
 train-baseline:
 	$(UV) run wildlife-mlops train-baseline --tracking-uri "$(MLFLOW_TRACKING_URI)" --experiment-name "wildlife-baseline-comparison"

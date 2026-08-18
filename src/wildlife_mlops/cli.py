@@ -35,6 +35,7 @@ from wildlife_mlops.pretrained import (
     run_pretrained_inference,
 )
 from wildlife_mlops.smoke import SmokeTrainError, load_smoke_train_config, run_smoke_train
+from wildlife_mlops.storage_verify import StorageVerificationError, verify_storage_responsibilities
 from wildlife_mlops.tracking import MLflowTrackingError
 
 
@@ -210,6 +211,13 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "predict-pretrained", help="Predict a fixed image sample with pinned weights."
     )
+    storage_parser = subparsers.add_parser(
+        "verify-mlflow-storage",
+        help="Verify PostgreSQL metadata and MinIO artifacts after MLflow recreation.",
+    )
+    storage_parser.add_argument("--tracking-uri", default="http://127.0.0.1:5001")
+    storage_parser.add_argument("--environment-file", type=Path, default=Path(".env"))
+    storage_parser.add_argument("--artifact-bytes", type=int, default=1_048_576)
     return parser
 
 
@@ -261,6 +269,17 @@ def main() -> int:
             return 1
         print("Device runtime summary:")
         print(json.dumps(summary.as_dict(), indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "verify-mlflow-storage":
+        try:
+            storage_result = verify_storage_responsibilities(
+                Path.cwd(), args.tracking_uri, args.environment_file, args.artifact_bytes
+            )
+        except StorageVerificationError as error:
+            print(f"Command failed: {error}")
+            return 1
+        print(f"Verified MLflow storage responsibilities: {storage_result.report_path}")
         return 0
 
     try:
@@ -426,6 +445,7 @@ def main() -> int:
         PredictionError,
         PretrainedInferenceError,
         SmokeTrainError,
+        StorageVerificationError,
         MLflowTrackingError,
         ValueError,
     ) as error:

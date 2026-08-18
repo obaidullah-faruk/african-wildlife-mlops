@@ -42,6 +42,16 @@ make mlflow-smoke
 `mlflow-smoke` creates a tiny tracked run and uploads `smoke.txt` through the
 MLflow artifact proxy. This verifies both PostgreSQL and MinIO.
 
+Verify where each kind of MLflow data lives. The command writes a 1 MiB test
+artifact, queries PostgreSQL, lists the matching MinIO object, recreates only
+the MLflow container, and downloads the artifact again.
+
+```sh
+make mlflow-storage-verify
+```
+
+Inspect `artifacts/mlflow-storage-verification/storage-verification.json`.
+
 Run the tracked smoke training and then open
 <http://127.0.0.1:5001>. Select the `wildlife-smoke` experiment and inspect the
 parameters, terminal metrics, and `training-output` artifacts.
