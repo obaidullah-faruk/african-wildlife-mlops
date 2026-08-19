@@ -5,7 +5,7 @@ MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
 MLFLOW_EXPERIMENT ?= wildlife-smoke
 COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke mlflow-storage-verify mlflow-maintenance mlflow-break-artifacts
+.PHONY: bootstrap doctor device-info lint typecheck test container-arm64 container-amd64 data-download data-inventory data-content-manifest data-validate data-visualize data-audit-splits data-smoke-manifest predict-pretrained predict train-overfit train-smoke train-baseline evaluate-baseline run-experiment evaluate-release-test mlflow-env-check mlflow-up mlflow-down mlflow-smoke mlflow-storage-verify mlflow-maintenance mlflow-break-artifacts
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -86,6 +86,9 @@ data-download:
 
 data-inventory:
 	$(UV) run wildlife-mlops data-inventory
+
+data-content-manifest:
+	$(UV) run wildlife-mlops data-content-manifest
 
 data-validate:
 	$(UV) run wildlife-mlops data-validate

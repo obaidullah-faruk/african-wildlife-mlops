@@ -15,6 +15,12 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from wildlife_mlops.data.config import DatasetConfig
+from wildlife_mlops.data.manifest import (
+    ContentManifestError,
+    load_verified_manifest,
+    manifest_checksum,
+    manifest_image_paths,
+)
 from wildlife_mlops.data.validate import label_path_for_image
 from wildlife_mlops.device import DeviceSummary
 from wildlife_mlops.lineage import LineageError, collect_local_lineage_tags
@@ -83,7 +89,16 @@ def run_smoke_train(
     if config.validation_split == "test":
         raise SmokeTrainError("The sealed test split cannot be used for smoke training")
 
-    selected_images = _load_manifest_images(config, dataset_config, project_root)
+    try:
+        content_manifest = load_verified_manifest(dataset_config, project_root)
+    except ContentManifestError as error:
+        raise SmokeTrainError(str(error)) from error
+    selected_images = _load_manifest_images(
+        config, dataset_config, project_root, content_manifest
+    )
+    validation_images = manifest_image_paths(
+        content_manifest, project_root, dataset_config, config.validation_split
+    )
     run_dir = _create_run_directory(project_root)
     train_list_path = run_dir / "smoke-train.txt"
     train_list_path.write_text(
@@ -94,7 +109,7 @@ def run_smoke_train(
         run_dir,
         project_root / dataset_config.dataset_root,
         train_list_path,
-        config.validation_split,
+        validation_images,
         dataset_config.class_names,
     )
     _write_json(
@@ -216,7 +231,10 @@ def _disable_ultralytics_mlflow_callbacks(model: Any) -> None:
 
 
 def _load_manifest_images(
-    config: SmokeTrainConfig, dataset_config: DatasetConfig, project_root: Path
+    config: SmokeTrainConfig,
+    dataset_config: DatasetConfig,
+    project_root: Path,
+    content_manifest: dict[str, Any],
 ) -> list[Path]:
     """Load manifest entries and validate they are labeled training images from this archive."""
     manifest_path = project_root / config.manifest_path
@@ -230,8 +248,8 @@ def _load_manifest_images(
         raise SmokeTrainError(f"Invalid smoke subset manifest: {manifest_path}") from error
     if not isinstance(manifest, dict):
         raise SmokeTrainError(f"Smoke subset manifest must be an object: {manifest_path}")
-    if manifest.get("source_archive_sha256") != dataset_config.expected_sha256:
-        raise SmokeTrainError("Smoke subset manifest does not match the configured source archive")
+    if manifest.get("content_manifest_sha256") != manifest_checksum(project_root):
+        raise SmokeTrainError("Smoke subset manifest does not match the content manifest")
     if manifest.get("source_split") != "train":
         raise SmokeTrainError("Smoke subset manifest must contain only training images")
     raw_images = manifest.get("images")
@@ -242,6 +260,9 @@ def _load_manifest_images(
 
     dataset_root = project_root / dataset_config.dataset_root
     train_root = dataset_root / "images" / "train"
+    manifest_train_images = set(
+        manifest_image_paths(content_manifest, project_root, dataset_config, "train")
+    )
     selected_images: list[Path] = []
     for raw_image in raw_images:
         if not isinstance(raw_image, str):
@@ -250,7 +271,11 @@ def _load_manifest_images(
         if relative_image.is_absolute():
             raise SmokeTrainError("Smoke subset manifest image paths must be relative")
         image_path = project_root / relative_image
-        if not image_path.is_file() or not image_path.is_relative_to(train_root):
+        if (
+            not image_path.is_file()
+            or not image_path.is_relative_to(train_root)
+            or image_path not in manifest_train_images
+        ):
             raise SmokeTrainError(f"Invalid smoke subset image path: {raw_image}")
         label_path = label_path_for_image(dataset_root, "train", image_path)
         if not label_path.is_file():
@@ -271,17 +296,21 @@ def _write_data_config(
     run_dir: Path,
     dataset_root: Path,
     train_list_path: Path,
-    validation_split: str,
+    validation_images: list[Path],
     class_names: list[str],
 ) -> Path:
-    """Write the Ultralytics dataset definition for the training manifest and validation split."""
+    """Write the Ultralytics dataset definition from manifest-selected image lists."""
     data_path = run_dir / "dataset.yaml"
+    validation_list_path = run_dir / "validation-images.txt"
+    validation_list_path.write_text(
+        "\n".join(str(path.resolve()) for path in validation_images) + "\n", encoding="utf-8"
+    )
     data_path.write_text(
         yaml.safe_dump(
             {
                 "path": str(dataset_root.resolve()),
                 "train": str(train_list_path.resolve()),
-                "val": f"images/{validation_split}",
+                "val": str(validation_list_path.resolve()),
                 "names": {index: name for index, name in enumerate(class_names)},
             },
             sort_keys=False,

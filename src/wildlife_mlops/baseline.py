@@ -22,6 +22,11 @@ from PIL import Image, ImageDraw, ImageStat
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from wildlife_mlops.data.config import DatasetConfig
+from wildlife_mlops.data.manifest import (
+    ContentManifestError,
+    load_verified_manifest,
+    write_manifest_image_list,
+)
 from wildlife_mlops.data.validate import (
     BoundingBox,
     image_paths,
@@ -126,12 +131,27 @@ def _run_training(
     if not model_path.is_file() or model_path.stat().st_size == 0:
         raise BaselineError(f"Pretrained model is missing or empty: {model_path}")
     _validate_validation_split(config.validation_split, dataset_config)
+    try:
+        content_manifest = load_verified_manifest(dataset_config, project_root)
+    except ContentManifestError as error:
+        raise BaselineError(str(error)) from error
     run_dir = _create_run_directory(project_root, run_prefix)
+    train_list_path = write_manifest_image_list(
+        content_manifest, project_root, dataset_config, "train", run_dir / "training-images.txt"
+    )
+    validation_list_path = write_manifest_image_list(
+        content_manifest,
+        project_root,
+        dataset_config,
+        config.validation_split,
+        run_dir / "validation-images.txt",
+    )
     data_path = _write_dataset_config(
         run_dir,
         project_root / dataset_config.dataset_root,
         dataset_config.class_names,
-        config.validation_split,
+        train_list_path,
+        validation_list_path,
     )
     _write_json(run_dir / "resolved-config.json", {"config": config.model_dump(mode="json")})
 
@@ -515,11 +535,10 @@ def evaluate_selected_baseline_on_test(
         raise BaselineError("The selected model checksum no longer matches the frozen release")
     config = _load_saved_config(run_dir / "resolved-config.json")
     evaluation_dir = _create_run_directory(project_root, "release-test")
-    test_data_path = _write_dataset_config(
+    test_data_path = _write_test_evaluation_dataset_config(
         evaluation_dir,
         project_root / dataset_config.dataset_root,
         dataset_config.class_names,
-        "test",
     )
     _evaluate_model(
         run_dir,
@@ -720,16 +739,37 @@ def _write_dataset_config(
     run_dir: Path,
     dataset_root: Path,
     class_names: list[str],
-    validation_split: str,
+    train_list_path: Path,
+    validation_list_path: Path,
 ) -> Path:
-    """Write the full-training dataset definition without exposing the test split."""
+    """Write the full-training dataset definition from manifest-selected image lists."""
+    data_path = run_dir / "dataset.yaml"
+    data_path.write_text(
+        yaml.safe_dump(
+            {
+                "path": str(dataset_root.resolve()),
+                "train": str(train_list_path.resolve()),
+                "val": str(validation_list_path.resolve()),
+                "names": {index: name for index, name in enumerate(class_names)},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return data_path
+
+
+def _write_test_evaluation_dataset_config(
+    run_dir: Path, dataset_root: Path, class_names: list[str]
+) -> Path:
+    """Write the existing sealed-test definition for the frozen release evaluation."""
     data_path = run_dir / "dataset.yaml"
     data_path.write_text(
         yaml.safe_dump(
             {
                 "path": str(dataset_root.resolve()),
                 "train": "images/train",
-                "val": f"images/{validation_split}",
+                "val": "images/test",
                 "names": {index: name for index, name in enumerate(class_names)},
             },
             sort_keys=False,

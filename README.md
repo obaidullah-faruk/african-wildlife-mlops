@@ -120,10 +120,15 @@ comparison report. The selected MLflow run receives `selection.status` and
 make data-download
 make data-inventory
 make data-validate
+make data-content-manifest
 make data-visualize
 make data-audit-splits
 make data-smoke-manifest
 ```
+
+Run `make data-content-manifest` after inspecting validation results. It records
+each image and label checksum, dimensions, class counts, source, and license reference.
+Training verifies this manifest and uses its explicit image lists.
 
 ## Pretrained prediction
 

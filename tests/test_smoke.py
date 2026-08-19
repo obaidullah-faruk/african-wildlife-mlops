@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Self
@@ -5,6 +6,7 @@ from typing import Any, Self
 import pytest
 
 from wildlife_mlops.data.config import DatasetConfig
+from wildlife_mlops.data.manifest import create_content_manifest, manifest_checksum
 from wildlife_mlops.device import DeviceSummary
 from wildlife_mlops.lineage import LineageError, sha256_file
 from wildlife_mlops.smoke import (
@@ -57,6 +59,9 @@ def test_smoke_train_writes_and_verifies_required_artifacts(tmp_path: Path) -> N
     assert (run_dir / "environment-summary.json").is_file()
     assert (run_dir / "results.csv").is_file()
     assert (run_dir / "run-report.json").is_file()
+    dataset_definition = (run_dir / "dataset.yaml").read_text(encoding="utf-8")
+    assert str((run_dir / "smoke-train.txt").resolve()) in dataset_definition
+    assert str((run_dir / "validation-images.txt").resolve()) in dataset_definition
 
 
 def test_smoke_train_fails_when_training_results_are_missing(tmp_path: Path) -> None:
@@ -289,12 +294,36 @@ def _create_inputs(tmp_path: Path) -> tuple[SmokeTrainConfig, DatasetConfig, Dev
     label_path.parent.mkdir(parents=True)
     image_path.write_text("P3\n1 1\n255\n0 0 0\n", encoding="utf-8")
     label_path.write_text("0 0.5 0.5 0.5 0.5\n", encoding="utf-8")
+    validation_image = (
+        tmp_path / "data" / "raw" / "wildlife" / "images" / "val" / "sample.ppm"
+    )
+    validation_label = (
+        tmp_path / "data" / "raw" / "wildlife" / "labels" / "val" / "sample.txt"
+    )
+    validation_image.parent.mkdir(parents=True)
+    validation_label.parent.mkdir(parents=True)
+    validation_image.write_text("P3\n1 1\n255\n0 0 0\n", encoding="utf-8")
+    validation_label.write_text("0 0.5 0.5 0.5 0.5\n", encoding="utf-8")
+    archive_path = tmp_path / "data" / "raw" / "wildlife.zip"
+    archive_path.write_bytes(b"archive")
+    dataset_config = DatasetConfig(
+        schema_version=1,
+        source_url="https://example.invalid/dataset.zip",
+        source_license_reference="LICENSE.txt",
+        archive_path=Path("data/raw/wildlife.zip"),
+        dataset_root=Path("data/raw/wildlife"),
+        expected_sha256=hashlib.sha256(archive_path.read_bytes()).hexdigest(),
+        class_names=["buffalo"],
+        splits={"train": 1, "val": 1, "test": 1},
+        smoke_subset_size=16,
+        test_split_sealed=True,
+    )
+    create_content_manifest(dataset_config, tmp_path)
     manifest_path = tmp_path / "data" / "manifests" / "smoke.json"
-    manifest_path.parent.mkdir(parents=True)
     manifest_path.write_text(
         json.dumps(
             {
-                "source_archive_sha256": "0" * 64,
+                "content_manifest_sha256": manifest_checksum(tmp_path),
                 "source_split": "train",
                 "images": [str(image_path.relative_to(tmp_path))],
             }
@@ -311,17 +340,6 @@ def _create_inputs(tmp_path: Path) -> tuple[SmokeTrainConfig, DatasetConfig, Dev
         workers=0,
         seed=7,
         validation_split="val",
-    )
-    dataset_config = DatasetConfig(
-        schema_version=1,
-        source_url="https://example.invalid/dataset.zip",
-        archive_path=Path("data/raw/wildlife.zip"),
-        dataset_root=Path("data/raw/wildlife"),
-        expected_sha256="0" * 64,
-        class_names=["buffalo"],
-        splits={"train": 1, "val": 1, "test": 1},
-        smoke_subset_size=16,
-        test_split_sealed=True,
     )
     device_summary = DeviceSummary(
         device="cpu",

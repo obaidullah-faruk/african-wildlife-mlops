@@ -17,7 +17,12 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from wildlife_mlops.data.config import DatasetConfig
-from wildlife_mlops.data.validate import image_paths, label_path_for_image
+from wildlife_mlops.data.manifest import (
+    ContentManifestError,
+    load_verified_manifest,
+    manifest_image_paths,
+)
+from wildlife_mlops.data.validate import label_path_for_image
 from wildlife_mlops.device import DeviceSummary
 
 
@@ -92,10 +97,14 @@ def run_overfit_diagnostic(
         raise OverfitDiagnosticError(
             f"Source split {config.source_split!r} is not defined in the dataset configuration"
         )
+    try:
+        content_manifest = load_verified_manifest(dataset_config, project_root)
+    except ContentManifestError as error:
+        raise OverfitDiagnosticError(str(error)) from error
 
     run_dir = _create_run_directory(project_root)
     selected_paths = _select_training_images(
-        project_root / dataset_config.dataset_root,
+        manifest_image_paths(content_manifest, project_root, dataset_config, config.source_split),
         config.source_split,
         config.image_count,
     )
@@ -187,21 +196,17 @@ def _create_run_directory(project_root: Path) -> Path:
     return run_dir
 
 
-def _select_training_images(dataset_root: Path, split: str, image_count: int) -> list[Path]:
-    """Choose a stable image subset from one configured source split."""
-    candidates = [
-        path
-        for path_split, path in image_paths(dataset_root, {split: 0})
-        if path_split == split
-    ]
+def _select_training_images(
+    manifest_paths: list[Path], split: str, image_count: int
+) -> list[Path]:
+    """Choose a stable image subset from one verified manifest split."""
     selected = sorted(
-        candidates,
+        manifest_paths,
         key=lambda path: hashlib.sha256(path.as_posix().encode()).hexdigest(),
     )[:image_count]
     if len(selected) != image_count:
         raise OverfitDiagnosticError(
-            f"Expected {image_count} images in {dataset_root / 'images' / split}, "
-            f"found {len(selected)}"
+            f"Expected {image_count} manifest images in split {split!r}, found {len(selected)}"
         )
     return selected
 

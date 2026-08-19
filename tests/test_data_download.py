@@ -39,6 +39,7 @@ def _config(source_url: str, checksum: str) -> DatasetConfig:
     return DatasetConfig(
         schema_version=1,
         source_url=source_url,
+        source_license_reference="LICENSE.txt",
         archive_path=Path("data/raw/wildlife.zip"),
         dataset_root=Path("data/raw/wildlife"),
         expected_sha256=checksum,

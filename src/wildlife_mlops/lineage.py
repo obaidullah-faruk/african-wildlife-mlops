@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from wildlife_mlops.data.config import DatasetConfig
+from wildlife_mlops.data.manifest import ContentManifestError, manifest_checksum
 from wildlife_mlops.device import DeviceSummary
 
 
@@ -33,7 +34,7 @@ def collect_local_lineage_tags(
         "lineage.git_dirty": str(bool(_git_output(project_root, "status", "--porcelain"))).lower(),
         "lineage.dvc_revision": "not_applicable",
         "lineage.source_archive_sha256": dataset_config.expected_sha256,
-        "lineage.prepared_manifest_sha256": "not_applicable",
+        "lineage.prepared_manifest_sha256": _content_manifest_checksum(project_root),
         "lineage.config_sha256": sha256_file(resolved_config_path),
         "lineage.random_seed": str(seed),
         "lineage.base_weights_name": base_weights_path.name,
@@ -60,6 +61,14 @@ def sha256_file(path: Path) -> str:
     if not contents:
         raise LineageError(f"Unable to checksum empty lineage file: {path}")
     return hashlib.sha256(contents).hexdigest()
+
+
+def _content_manifest_checksum(project_root: Path) -> str:
+    """Return the verified data-manifest identity used by native training."""
+    try:
+        return manifest_checksum(project_root)
+    except ContentManifestError as error:
+        raise LineageError(str(error)) from error
 
 
 def _git_output(project_root: Path, *arguments: str) -> str:

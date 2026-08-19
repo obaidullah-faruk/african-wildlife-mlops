@@ -1,5 +1,6 @@
 schema_version: 1
 source_url: https://github.com/ultralytics/assets/releases/download/v0.0.0/african-wildlife.zip
+source_license_reference: data/raw/african-wildlife/LICENSE.txt
 archive_path: data/raw/african-wildlife.zip
 dataset_root: data/raw/african-wildlife
 expected_sha256: 6b97a768bd8c89a4ac6f1fd72549a5af805f68568d8846fd0fe68e30c0040061

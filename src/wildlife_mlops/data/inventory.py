@@ -15,6 +15,11 @@ from PIL import Image
 
 from wildlife_mlops.data.config import DatasetConfig
 from wildlife_mlops.data.download import sha256_file
+from wildlife_mlops.data.manifest import (
+    load_verified_manifest,
+    manifest_checksum,
+    manifest_image_paths,
+)
 from wildlife_mlops.data.validate import image_paths, label_path_for_image, parse_yolo_label
 
 
@@ -99,11 +104,9 @@ def create_inventory(config: DatasetConfig, project_root: Path) -> tuple[Path, P
 
 def create_smoke_manifest(config: DatasetConfig, project_root: Path) -> Path:
     """Select a deterministic training-only subset without copying source images."""
-    dataset_root = project_root / config.dataset_root
-    train_images = [
-        path for split, path in image_paths(dataset_root, config.splits) if split == "train"
-    ]
-    archive_checksum = sha256_file(project_root / config.archive_path)
+    manifest = load_verified_manifest(config, project_root)
+    train_images = manifest_image_paths(manifest, project_root, config, "train")
+    archive_checksum = str(manifest["source"]["archive_sha256"])
     ordered_images = sorted(train_images, key=lambda path: _selection_key(path, archive_checksum))
     selected_images = ordered_images[: config.smoke_subset_size]
     if len(selected_images) != config.smoke_subset_size:
@@ -115,6 +118,7 @@ def create_smoke_manifest(config: DatasetConfig, project_root: Path) -> Path:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
         "schema_version": 1,
+        "content_manifest_sha256": manifest_checksum(project_root),
         "source_archive_sha256": archive_checksum,
         "source_split": "train",
         "image_count": len(selected_images),

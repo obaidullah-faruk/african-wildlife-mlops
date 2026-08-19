@@ -14,6 +14,7 @@ def test_validator_reports_exact_row_for_out_of_bounds_box(tmp_path: Path) -> No
     config = DatasetConfig(
         schema_version=1,
         source_url="https://example.invalid/wildlife.zip",
+        source_license_reference="LICENSE.txt",
         archive_path=Path("data/raw/wildlife.zip"),
         dataset_root=Path("data/raw/wildlife"),
         expected_sha256="0" * 64,

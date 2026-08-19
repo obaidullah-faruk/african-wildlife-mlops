@@ -19,6 +19,7 @@ from wildlife_mlops.data.audit import audit_splits
 from wildlife_mlops.data.config import load_dataset_config
 from wildlife_mlops.data.download import DatasetDownloadError, download_and_extract
 from wildlife_mlops.data.inventory import create_inventory, create_smoke_manifest
+from wildlife_mlops.data.manifest import ContentManifestError, create_content_manifest
 from wildlife_mlops.data.validate import validate_dataset, write_validation_report
 from wildlife_mlops.data.visualize import create_contact_sheets
 from wildlife_mlops.device import DeviceSelectionError, collect_device_summary
@@ -201,6 +202,9 @@ def build_parser() -> argparse.ArgumentParser:
         "data-download", help="Download and extract the checksum-verified dataset."
     )
     subparsers.add_parser("data-inventory", help="Write dataset inventory artifacts.")
+    subparsers.add_parser(
+        "data-content-manifest", help="Write the verified canonical content manifest."
+    )
     subparsers.add_parser("data-validate", help="Validate every image and YOLO label.")
     subparsers.add_parser(
         "data-visualize", help="Render deterministic ground-truth contact sheets."
@@ -315,6 +319,10 @@ def main() -> int:
             parquet_path, summary_path = create_inventory(data_config, Path.cwd())
             print(f"Wrote inventory: {parquet_path}")
             print(f"Wrote summary: {summary_path}")
+        elif args.command == "data-content-manifest":
+            manifest_path, checksum_path = create_content_manifest(data_config, Path.cwd())
+            print(f"Wrote content manifest: {manifest_path}")
+            print(f"Wrote content manifest checksum: {checksum_path}")
         elif args.command == "data-validate":
             validation_result = validate_dataset(data_config, Path.cwd())
             report_path = Path.cwd() / "artifacts" / "validation-report.json"
@@ -456,6 +464,7 @@ def main() -> int:
             print(f"Wrote prediction: {output_path}")
     except (
         DatasetDownloadError,
+        ContentManifestError,
         BaselineError,
         ImportError,
         OSError,

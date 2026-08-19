@@ -15,6 +15,7 @@ class DatasetConfig(BaseModel):
 
     schema_version: int = Field(ge=1)
     source_url: str = Field(min_length=1)
+    source_license_reference: str = Field(min_length=1)
     archive_path: Path
     dataset_root: Path
     expected_sha256: str = Field(pattern="^[0-9a-f]{64}$")
