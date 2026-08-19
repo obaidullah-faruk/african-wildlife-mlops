@@ -45,6 +45,7 @@ cp .env.example .env
 make mlflow-up
 make mlflow-smoke
 make train-tracked
+make mlflow-down
 ```
 
 Open <http://127.0.0.1:5001>. A tracked run stores parameters, final metrics,
@@ -59,6 +60,28 @@ uv run dvc status
 ```
 
 The `run.json` file records the source archive checksum and DVC pointer checksum.
+
+## Release a candidate
+
+Start MLflow, then create a candidate. This validates the dataset, trains the
+baseline, evaluates the selected checkpoint on validation data, writes a quality
+report, packages the checkpoint with its inference code, and registers it in MLflow.
+
+```sh
+make release-candidate
+```
+
+Inspect `artifacts/releases/<candidate>/candidate.json` and
+`quality-report.json`. A person must then record approval before the sealed test
+split can be evaluated.
+
+```sh
+make approve-candidate CANDIDATE=artifacts/releases/<candidate> APPROVER="Your Name"
+make evaluate-approved CANDIDATE=artifacts/releases/<candidate>
+```
+
+`evaluate-approved` writes one `test-evaluation.json` file and refuses to run a
+second time for the same candidate.
 
 ## Predict one image
 

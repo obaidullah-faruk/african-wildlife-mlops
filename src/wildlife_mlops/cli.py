@@ -19,7 +19,14 @@ from wildlife_mlops.pretrained import (
     load_pretrained_config,
     run_pretrained_inference,
 )
-from wildlife_mlops.tracking import TrackingError, log_training_run
+from wildlife_mlops.release import (
+    ReleaseError,
+    approve_candidate,
+    create_candidate,
+    evaluate_approved_candidate,
+    load_quality_thresholds,
+)
+from wildlife_mlops.tracking import TrackingError, log_training_run, register_candidate
 from wildlife_mlops.training import TrainingError, load_training_config, run_training
 
 
@@ -57,6 +64,29 @@ def build_parser() -> argparse.ArgumentParser:
     tracked.add_argument("--device", choices=("auto", "mps", "cuda", "cpu"), default=None)
     tracked.add_argument("--tracking-uri", default="http://127.0.0.1:5001")
     tracked.add_argument("--experiment-name", default="wildlife-training")
+
+    release = commands.add_parser(
+        "release-candidate", help="Validate, train, evaluate, package, and register a candidate."
+    )
+    release.add_argument("--train-config", type=Path, default=Path("configs/train/baseline.yaml"))
+    release.add_argument(
+        "--quality-config", type=Path, default=Path("configs/release/quality.yaml")
+    )
+    release.add_argument("--device", choices=("auto", "mps", "cuda", "cpu"), default=None)
+    release.add_argument("--tracking-uri", default="http://127.0.0.1:5001")
+    release.add_argument("--experiment-name", default="wildlife-releases")
+    release.add_argument("--model-name", default="wildlife-candidate")
+
+    approval = commands.add_parser(
+        "approve-candidate", help="Record human approval for a candidate."
+    )
+    approval.add_argument("--candidate", type=Path, required=True)
+    approval.add_argument("--approver", required=True)
+
+    test_evaluation = commands.add_parser(
+        "evaluate-approved", help="Evaluate an approved candidate once on the sealed test split."
+    )
+    test_evaluation.add_argument("--candidate", type=Path, required=True)
     return parser
 
 
@@ -120,6 +150,38 @@ def main() -> int:
                 args.model, args.image, args.output, getattr(ultralytics, "YOLO")
             )
             print(f"Prediction: {output}")
+        elif args.command == "release-candidate":
+            training = load_training_config(args.train_config)
+            thresholds = load_quality_thresholds(args.quality_config)
+            device = collect_device_summary(args.device or config.project.runtime.requested_device)
+            import ultralytics
+
+            candidate_dir = create_candidate(
+                training,
+                thresholds,
+                data_config,
+                Path.cwd(),
+                device,
+                getattr(ultralytics, "YOLO"),
+            )
+            registration = register_candidate(
+                candidate_dir, args.tracking_uri, args.experiment_name, args.model_name
+            )
+            print(
+                f"Candidate: {candidate_dir}\n"
+                "MLflow model version: "
+                f"{registration['model_name']} {registration['model_version']}"
+            )
+        elif args.command == "approve-candidate":
+            approval = approve_candidate(args.candidate, args.approver)
+            print(f"Approval record: {approval}")
+        elif args.command == "evaluate-approved":
+            import ultralytics
+
+            report = evaluate_approved_candidate(
+                args.candidate, data_config, Path.cwd(), getattr(ultralytics, "YOLO")
+            )
+            print(f"Sealed test evaluation: {report}")
         elif args.command.startswith("train-"):
             training = load_training_config(args.train_config)
             device = collect_device_summary(args.device or config.project.runtime.requested_device)
@@ -143,6 +205,7 @@ def main() -> int:
         PretrainedInferenceError,
         TrackingError,
         TrainingError,
+        ReleaseError,
         ValueError,
     ) as error:
         print(f"Command failed: {error}")

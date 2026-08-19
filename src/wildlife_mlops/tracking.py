@@ -60,6 +60,55 @@ def log_training_run(run_dir: Path, tracking_uri: str, experiment_name: str) -> 
     return run_id
 
 
+def register_candidate(
+    candidate_dir: Path, tracking_uri: str, experiment_name: str, model_name: str
+) -> dict[str, str]:
+    """Log a packaged candidate and register its immutable MLflow model version."""
+    try:
+        import mlflow
+    except ImportError as error:
+        raise TrackingError("MLflow is not installed") from error
+
+    manifest_path = candidate_dir / "candidate.json"
+    if not manifest_path.is_file():
+        raise TrackingError(f"Candidate manifest is missing: {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise TrackingError(f"Candidate manifest is invalid JSON: {manifest_path}") from error
+    if not isinstance(manifest, dict):
+        raise TrackingError(f"Candidate manifest must be a JSON object: {manifest_path}")
+
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(experiment_name)
+    try:
+        run_name = str(manifest.get("candidate_id", candidate_dir.name))
+        with mlflow.start_run(run_name=run_name) as run:
+            mlflow.set_tags(
+                {
+                    "release.candidate_id": str(manifest.get("candidate_id", candidate_dir.name)),
+                    "release.model_sha256": str(manifest.get("model_sha256", "unknown")),
+                    "release.status": "candidate",
+                }
+            )
+            mlflow.log_artifacts(str(candidate_dir), artifact_path="candidate")
+            model_version = mlflow.register_model(f"runs:/{run.info.run_id}/candidate", model_name)
+    except Exception as error:
+        raise TrackingError(f"MLflow could not register {candidate_dir.name}: {error}") from error
+
+    record = {
+        "experiment": experiment_name,
+        "model_name": model_name,
+        "model_version": str(model_version.version),
+        "run_id": str(run.info.run_id),
+        "tracking_uri": tracking_uri,
+    }
+    (candidate_dir / "mlflow-registration.json").write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return record
+
+
 def _mapping(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
 

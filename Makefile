@@ -4,7 +4,7 @@ export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
 MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
 COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test data-download data-validate data-visualize predict-pretrained predict train-overfit train-smoke train-baseline train-tracked mlflow-up mlflow-down mlflow-smoke
+.PHONY: bootstrap doctor device-info lint typecheck test data-download data-validate data-visualize predict-pretrained predict train-overfit train-smoke train-baseline train-tracked release-candidate approve-candidate evaluate-approved mlflow-up mlflow-down mlflow-smoke
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -51,6 +51,17 @@ train-baseline:
 
 train-tracked:
 	$(UV) run wildlife-mlops train-tracked --tracking-uri "$(MLFLOW_TRACKING_URI)"
+
+release-candidate:
+	$(UV) run wildlife-mlops release-candidate --tracking-uri "$(MLFLOW_TRACKING_URI)"
+
+approve-candidate:
+	@test -n "$(CANDIDATE)" && test -n "$(APPROVER)" || (echo "CANDIDATE and APPROVER are required"; exit 2)
+	$(UV) run wildlife-mlops approve-candidate --candidate "$(CANDIDATE)" --approver "$(APPROVER)"
+
+evaluate-approved:
+	@test -n "$(CANDIDATE)" || (echo "CANDIDATE is required"; exit 2)
+	$(UV) run wildlife-mlops evaluate-approved --candidate "$(CANDIDATE)"
 
 mlflow-up:
 	@test -f .env || (echo ".env is required; copy .env.example to .env"; exit 2)
