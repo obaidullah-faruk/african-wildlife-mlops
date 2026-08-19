@@ -1,0 +1,326 @@
+{
+  "changes": [
+    {
+      "after": "1 0.764843750000 0.611925000000 0.470312500000 0.663180000000",
+      "before": "1 0.764844 0.611925 0.470313 0.663180",
+      "label_path": "data/raw/african-wildlife/labels/test/2 (34).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.551041750000 0.498148000000 0.897916500000 0.994444000000",
+      "before": "2 0.551042 0.498148 0.897917 0.994444",
+      "label_path": "data/raw/african-wildlife/labels/test/3 (132).txt",
+      "row": 1
+    },
+    {
+      "after": "0 0.431250000000 0.501879750000 0.592500000000 0.996240500000",
+      "before": "0 0.431250 0.501880 0.592500 0.996241",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (106).txt",
+      "row": 1
+    },
+    {
+      "after": "0 0.472857000000 0.591836750000 0.940000000000 0.816326500000",
+      "before": "0 0.472857 0.591837 0.940000 0.816327",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (146).txt",
+      "row": 1
+    },
+    {
+      "after": "0 0.596470750000 0.567708000000 0.807058500000 0.857639000000",
+      "before": "0 0.596471 0.567708 0.807059 0.857639",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (42).txt",
+      "row": 1
+    },
+    {
+      "after": "0 0.895711750000 0.305556000000 0.208576500000 0.205314000000",
+      "before": "0 0.895712 0.305556 0.208577 0.205314",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (63).txt",
+      "row": 3
+    },
+    {
+      "after": "0 0.633333000000 0.546666750000 0.728889000000 0.906666500000",
+      "before": "0 0.633333 0.546667 0.728889 0.906667",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (75).txt",
+      "row": 1
+    },
+    {
+      "after": "0 0.539461750000 0.496065000000 0.921076500000 0.990380000000",
+      "before": "0 0.539462 0.496065 0.921077 0.990380",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (92).txt",
+      "row": 1
+    },
+    {
+      "after": "0 0.497692000000 0.549952750000 0.945668000000 0.900094500000",
+      "before": "0 0.497692 0.549953 0.945668 0.900095",
+      "label_path": "data/raw/african-wildlife/labels/train/1 (99).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.780468750000 0.410417000000 0.439062500000 0.437500000000",
+      "before": "1 0.780469 0.410417 0.439063 0.437500",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (13).txt",
+      "row": 4
+    },
+    {
+      "after": "1 0.860938000000 0.685416750000 0.271875000000 0.629166500000",
+      "before": "1 0.860938 0.685417 0.271875 0.629167",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (140).txt",
+      "row": 2
+    },
+    {
+      "after": "1 0.896093750000 0.634660000000 0.207812500000 0.402810000000",
+      "before": "1 0.896094 0.634660 0.207813 0.402810",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (141).txt",
+      "row": 2
+    },
+    {
+      "after": "1 0.658593750000 0.500000000000 0.682812500000 0.995833000000",
+      "before": "1 0.658594 0.500000 0.682813 0.995833",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (151).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.254688000000 0.501041750000 0.506250000000 0.997916500000",
+      "before": "1 0.254688 0.501042 0.506250 0.997917",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (151).txt",
+      "row": 2
+    },
+    {
+      "after": "1 0.775000000000 0.691666750000 0.396875000000 0.616666500000",
+      "before": "1 0.775000 0.691667 0.396875 0.616667",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (160).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.308594000000 0.547785750000 0.560937000000 0.904428500000",
+      "before": "1 0.308594 0.547786 0.560937 0.904429",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (164).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.842968750000 0.519953000000 0.314062500000 0.330986000000",
+      "before": "1 0.842969 0.519953 0.314063 0.330986",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (173).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.624219000000 0.708624750000 0.298438000000 0.582750500000",
+      "before": "1 0.624219 0.708625 0.298438 0.582751",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (179).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.755468750000 0.583138000000 0.489062500000 0.529274000000",
+      "before": "1 0.755469 0.583138 0.489063 0.529274",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (191).txt",
+      "row": 2
+    },
+    {
+      "after": "1 0.526041750000 0.500000000000 0.947916500000 0.992157000000",
+      "before": "1 0.526042 0.500000 0.947917 0.992157",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (216).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.552552750000 0.563000000000 0.894894500000 0.874000000000",
+      "before": "1 0.552553 0.563000 0.894895 0.874000",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (47).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.593896750000 0.667969000000 0.812206500000 0.660937000000",
+      "before": "1 0.593897 0.667969 0.812207 0.660937",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (67).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.533593750000 0.444792000000 0.932812500000 0.885417000000",
+      "before": "1 0.533594 0.444792 0.932813 0.885417",
+      "label_path": "data/raw/african-wildlife/labels/train/2 (82).txt",
+      "row": 2
+    },
+    {
+      "after": "2 0.363559000000 0.561428750000 0.723729000000 0.877142500000",
+      "before": "2 0.363559 0.561429 0.723729 0.877143",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (121).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.623171000000 0.501683750000 0.748780000000 0.996632500000",
+      "before": "2 0.623171 0.501684 0.748780 0.996633",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (15).txt",
+      "row": 2
+    },
+    {
+      "after": "2 0.745244750000 0.337755000000 0.509510500000 0.671429000000",
+      "before": "2 0.745245 0.337755 0.509511 0.671429",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (167).txt",
+      "row": 2
+    },
+    {
+      "after": "2 0.835833000000 0.741666750000 0.325000000000 0.516666500000",
+      "before": "2 0.835833 0.741667 0.325000 0.516667",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (23).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.616186000000 0.524216750000 0.687500000000 0.951566500000",
+      "before": "2 0.616186 0.524217 0.687500 0.951567",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (29).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.794433750000 0.578776000000 0.411132500000 0.493490000000",
+      "before": "2 0.794434 0.578776 0.411133 0.493490",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (53).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.509375000000 0.542114750000 0.868750000000 0.915770500000",
+      "before": "2 0.509375 0.542115 0.868750 0.915771",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (56).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.674751750000 0.663596000000 0.650496500000 0.660526000000",
+      "before": "2 0.674752 0.663596 0.650497 0.660526",
+      "label_path": "data/raw/african-wildlife/labels/train/3 (82).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.355469000000 0.582159750000 0.464062000000 0.835680500000",
+      "before": "3 0.355469 0.582160 0.464062 0.835681",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (100).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.473438000000 0.632318750000 0.471875000000 0.735362500000",
+      "before": "3 0.473438 0.632319 0.471875 0.735363",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (126).txt",
+      "row": 2
+    },
+    {
+      "after": "3 0.601666750000 0.575000000000 0.796666500000 0.850000000000",
+      "before": "3 0.601667 0.575000 0.796667 0.850000",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (204).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.045312250000 0.559459000000 0.090624500000 0.229730000000",
+      "before": "3 0.045312 0.559459 0.090625 0.229730",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (312).txt",
+      "row": 3
+    },
+    {
+      "after": "3 0.652225000000 0.530468750000 0.695550000000 0.939062500000",
+      "before": "3 0.652225 0.530469 0.695550 0.939063",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (33).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.622656000000 0.598360750000 0.751563000000 0.803278500000",
+      "before": "3 0.622656 0.598361 0.751563 0.803279",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (51).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.726562000000 0.606807750000 0.534375000000 0.786384500000",
+      "before": "3 0.726562 0.606808 0.534375 0.786385",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (84).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.756250000000 0.576041750000 0.428125000000 0.847916500000",
+      "before": "3 0.756250 0.576042 0.428125 0.847917",
+      "label_path": "data/raw/african-wildlife/labels/train/4 (92).txt",
+      "row": 2
+    },
+    {
+      "after": "0 0.439967000000 0.552631750000 0.876645000000 0.894736500000",
+      "before": "0 0.439967 0.552632 0.876645 0.894737",
+      "label_path": "data/raw/african-wildlife/labels/val/1 (202).txt",
+      "row": 1
+    },
+    {
+      "after": "1 0.534117750000 0.489063000000 0.931764500000 0.900000000000",
+      "before": "1 0.534118 0.489063 0.931765 0.900000",
+      "label_path": "data/raw/african-wildlife/labels/val/2 (49).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.295000000000 0.652684750000 0.555714000000 0.694630500000",
+      "before": "2 0.295000 0.652685 0.555714 0.694631",
+      "label_path": "data/raw/african-wildlife/labels/val/3 (107).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.713461750000 0.649856000000 0.573076500000 0.561960000000",
+      "before": "2 0.713462 0.649856 0.573077 0.561960",
+      "label_path": "data/raw/african-wildlife/labels/val/3 (154).txt",
+      "row": 1
+    },
+    {
+      "after": "2 0.617307750000 0.438040000000 0.765384500000 0.472622000000",
+      "before": "2 0.617308 0.438040 0.765385 0.472622",
+      "label_path": "data/raw/african-wildlife/labels/val/3 (154).txt",
+      "row": 2
+    },
+    {
+      "after": "2 0.646666750000 0.453333000000 0.706666500000 0.800000000000",
+      "before": "2 0.646667 0.453333 0.706667 0.800000",
+      "label_path": "data/raw/african-wildlife/labels/val/3 (163).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.321094000000 0.526041750000 0.635938000000 0.947916500000",
+      "before": "3 0.321094 0.526042 0.635938 0.947917",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (118).txt",
+      "row": 2
+    },
+    {
+      "after": "3 0.687000000000 0.544285750000 0.490000000000 0.911428500000",
+      "before": "3 0.687000 0.544286 0.490000 0.911429",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (158).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.416406000000 0.665484750000 0.301563000000 0.669030500000",
+      "before": "3 0.416406 0.665485 0.301563 0.669031",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (160).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.500000000000 0.572916750000 0.440625000000 0.854166500000",
+      "before": "3 0.500000 0.572917 0.440625 0.854167",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (161).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.450781000000 0.571428750000 0.614062000000 0.857142500000",
+      "before": "3 0.450781 0.571429 0.614062 0.857143",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (164).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.143359250000 0.382432000000 0.286718500000 0.318919000000",
+      "before": "3 0.143359 0.382432 0.286719 0.318919",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (318).txt",
+      "row": 3
+    },
+    {
+      "after": "3 0.635938000000 0.534117750000 0.718750000000 0.931764500000",
+      "before": "3 0.635938 0.534118 0.718750 0.931765",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (32).txt",
+      "row": 1
+    },
+    {
+      "after": "3 0.600000000000 0.541666750000 0.790625000000 0.916666500000",
+      "before": "3 0.600000 0.541667 0.790625 0.916667",
+      "label_path": "data/raw/african-wildlife/labels/val/4 (91).txt",
+      "row": 1
+    }
+  ],
+  "corrected_box_count": 53,
+  "method": "Clip only documented bounding-box edges to normalized image bounds.",
+  "schema_version": 1,
+  "source_validation_report_sha256": "2dc1bda22fc51574624ed0dac6d440079fe3c3b7097a700d70633aa497ddf9a9"
+}
