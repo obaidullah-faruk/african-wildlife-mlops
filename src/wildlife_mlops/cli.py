@@ -6,11 +6,13 @@ import argparse
 import json
 from pathlib import Path
 
+from wildlife_mlops.client import ClientError, send_prediction
 from wildlife_mlops.config import load_config
 from wildlife_mlops.data.config import load_dataset_config
 from wildlife_mlops.data.download import DatasetDownloadError, download_and_extract
 from wildlife_mlops.data.validate import validate_dataset, write_validation_report
 from wildlife_mlops.data.visualize import create_contact_sheets
+from wildlife_mlops.deployment import DeploymentError, record_rollback
 from wildlife_mlops.device import DeviceSelectionError, collect_device_summary
 from wildlife_mlops.doctor import run_doctor
 from wildlife_mlops.predict import PredictionError, predict_image
@@ -26,6 +28,7 @@ from wildlife_mlops.release import (
     evaluate_approved_candidate,
     load_quality_thresholds,
 )
+from wildlife_mlops.service import run_server
 from wildlife_mlops.tracking import TrackingError, log_training_run, register_candidate
 from wildlife_mlops.training import TrainingError, load_training_config, run_training
 
@@ -77,6 +80,14 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--experiment-name", default="wildlife-releases")
     release.add_argument("--model-name", default="wildlife-candidate")
 
+    registration = commands.add_parser(
+        "register-candidate", help="Register an already packaged candidate in MLflow."
+    )
+    registration.add_argument("--candidate", type=Path, required=True)
+    registration.add_argument("--tracking-uri", default="http://127.0.0.1:5001")
+    registration.add_argument("--experiment-name", default="wildlife-releases")
+    registration.add_argument("--model-name", default="wildlife-candidate")
+
     approval = commands.add_parser(
         "approve-candidate", help="Record human approval for a candidate."
     )
@@ -87,6 +98,22 @@ def build_parser() -> argparse.ArgumentParser:
         "evaluate-approved", help="Evaluate an approved candidate once on the sealed test split."
     )
     test_evaluation.add_argument("--candidate", type=Path, required=True)
+
+    serve = commands.add_parser("serve", help="Serve one approved candidate through local HTTP.")
+    serve.add_argument("--candidate", type=Path, required=True)
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+
+    client = commands.add_parser("send-prediction", help="Send one image to the local API.")
+    client.add_argument("--image", type=Path, required=True)
+    client.add_argument("--api-url", default="http://127.0.0.1:8000")
+    client.add_argument("--output", type=Path, required=True)
+
+    rollback = commands.add_parser("record-rollback", help="Record verified rollback evidence.")
+    rollback.add_argument("--from-candidate", type=Path, required=True)
+    rollback.add_argument("--to-candidate", type=Path, required=True)
+    rollback.add_argument("--prediction", type=Path, required=True)
+    rollback.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -172,6 +199,14 @@ def main() -> int:
                 "MLflow model version: "
                 f"{registration['model_name']} {registration['model_version']}"
             )
+        elif args.command == "register-candidate":
+            registration = register_candidate(
+                args.candidate, args.tracking_uri, args.experiment_name, args.model_name
+            )
+            print(
+                "MLflow model version: "
+                f"{registration['model_name']} {registration['model_version']}"
+            )
         elif args.command == "approve-candidate":
             approval = approve_candidate(args.candidate, args.approver)
             print(f"Approval record: {approval}")
@@ -182,6 +217,22 @@ def main() -> int:
                 args.candidate, data_config, Path.cwd(), getattr(ultralytics, "YOLO")
             )
             print(f"Sealed test evaluation: {report}")
+        elif args.command == "serve":
+            if not 1 <= args.port <= 65535:
+                raise ValueError("Server port must be between 1 and 65535")
+            run_server(args.candidate, args.host, args.port)
+        elif args.command == "send-prediction":
+            if args.output.exists():
+                raise ValueError(f"Prediction output already exists: {args.output}")
+            response = send_prediction(args.api_url, args.image)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(response, indent=2, sort_keys=True) + "\n")
+            print(f"Prediction response: {args.output}")
+        elif args.command == "record-rollback":
+            record = record_rollback(
+                args.from_candidate, args.to_candidate, args.prediction, args.output
+            )
+            print(f"Rollback evidence: {record}")
         elif args.command.startswith("train-"):
             training = load_training_config(args.train_config)
             device = collect_device_summary(args.device or config.project.runtime.requested_device)
@@ -206,6 +257,8 @@ def main() -> int:
         TrackingError,
         TrainingError,
         ReleaseError,
+        ClientError,
+        DeploymentError,
         ValueError,
     ) as error:
         print(f"Command failed: {error}")

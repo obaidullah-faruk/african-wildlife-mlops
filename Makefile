@@ -2,9 +2,10 @@ UV := uv
 export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
 MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
+RELEASE_TRAIN_CONFIG ?= configs/train/baseline.yaml
 COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test data-download data-validate data-visualize predict-pretrained predict train-overfit train-smoke train-baseline train-tracked release-candidate approve-candidate evaluate-approved mlflow-up mlflow-down mlflow-smoke
+.PHONY: bootstrap doctor device-info lint typecheck test data-download data-validate data-visualize predict-pretrained predict train-overfit train-smoke train-baseline train-tracked release-candidate register-candidate approve-candidate evaluate-approved serve send-prediction record-rollback mlflow-up mlflow-down mlflow-smoke
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -53,7 +54,11 @@ train-tracked:
 	$(UV) run wildlife-mlops train-tracked --tracking-uri "$(MLFLOW_TRACKING_URI)"
 
 release-candidate:
-	$(UV) run wildlife-mlops release-candidate --tracking-uri "$(MLFLOW_TRACKING_URI)"
+	$(UV) run wildlife-mlops release-candidate --tracking-uri "$(MLFLOW_TRACKING_URI)" --train-config "$(RELEASE_TRAIN_CONFIG)"
+
+register-candidate:
+	@test -n "$(CANDIDATE)" || (echo "CANDIDATE is required"; exit 2)
+	$(UV) run wildlife-mlops register-candidate --candidate "$(CANDIDATE)" --tracking-uri "$(MLFLOW_TRACKING_URI)"
 
 approve-candidate:
 	@test -n "$(CANDIDATE)" && test -n "$(APPROVER)" || (echo "CANDIDATE and APPROVER are required"; exit 2)
@@ -62,6 +67,18 @@ approve-candidate:
 evaluate-approved:
 	@test -n "$(CANDIDATE)" || (echo "CANDIDATE is required"; exit 2)
 	$(UV) run wildlife-mlops evaluate-approved --candidate "$(CANDIDATE)"
+
+serve:
+	@test -n "$(CANDIDATE)" || (echo "CANDIDATE is required"; exit 2)
+	$(UV) run wildlife-mlops serve --candidate "$(CANDIDATE)"
+
+send-prediction:
+	@test -n "$(IMAGE)" && test -n "$(OUTPUT)" || (echo "IMAGE and OUTPUT are required"; exit 2)
+	$(UV) run wildlife-mlops send-prediction --image "$(IMAGE)" --output "$(OUTPUT)"
+
+record-rollback:
+	@test -n "$(FROM_CANDIDATE)" && test -n "$(TO_CANDIDATE)" && test -n "$(PREDICTION)" && test -n "$(OUTPUT)" || (echo "FROM_CANDIDATE, TO_CANDIDATE, PREDICTION, and OUTPUT are required"; exit 2)
+	$(UV) run wildlife-mlops record-rollback --from-candidate "$(FROM_CANDIDATE)" --to-candidate "$(TO_CANDIDATE)" --prediction "$(PREDICTION)" --output "$(OUTPUT)"
 
 mlflow-up:
 	@test -f .env || (echo ".env is required; copy .env.example to .env"; exit 2)

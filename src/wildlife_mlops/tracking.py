@@ -66,6 +66,8 @@ def register_candidate(
     """Log a packaged candidate and register its immutable MLflow model version."""
     try:
         import mlflow
+        from mlflow import MlflowClient
+        from mlflow.exceptions import MlflowException
     except ImportError as error:
         raise TrackingError("MLflow is not installed") from error
 
@@ -92,7 +94,20 @@ def register_candidate(
                 }
             )
             mlflow.log_artifacts(str(candidate_dir), artifact_path="candidate")
-            model_version = mlflow.register_model(f"runs:/{run.info.run_id}/candidate", model_name)
+            client = MlflowClient(tracking_uri)
+            try:
+                client.get_registered_model(model_name)
+            except MlflowException:
+                client.create_registered_model(model_name)
+            model_version = client.create_model_version(
+                name=model_name,
+                source=f"runs:/{run.info.run_id}/candidate",
+                run_id=run.info.run_id,
+                tags={
+                    "release.candidate_id": str(manifest.get("candidate_id", candidate_dir.name)),
+                    "release.model_sha256": str(manifest.get("model_sha256", "unknown")),
+                },
+            )
     except Exception as error:
         raise TrackingError(f"MLflow could not register {candidate_dir.name}: {error}") from error
 
