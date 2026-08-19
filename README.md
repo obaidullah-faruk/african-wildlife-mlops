@@ -130,6 +130,17 @@ Run `make data-content-manifest` after inspecting validation results. It records
 each image and label checksum, dimensions, class counts, source, and license reference.
 Training verifies this manifest and uses its explicit image lists.
 
+## Dataset tracking
+
+Raw dataset content is tracked by DVC. Git stores the small pointer instead.
+
+```sh
+uv run dvc status
+sed -n '1,160p' data/raw.dvc
+```
+
+`dvc status` should report that data and pipelines are up to date.
+
 ## Pretrained prediction
 
 ```sh
