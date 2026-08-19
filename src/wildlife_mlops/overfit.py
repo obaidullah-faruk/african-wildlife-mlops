@@ -97,6 +97,8 @@ def run_overfit_diagnostic(
         raise OverfitDiagnosticError(
             f"Source split {config.source_split!r} is not defined in the dataset configuration"
         )
+    if config.source_split == "test":
+        raise OverfitDiagnosticError("The sealed test split cannot be used for overfit training")
     try:
         content_manifest = load_verified_manifest(dataset_config, project_root)
     except ContentManifestError as error:

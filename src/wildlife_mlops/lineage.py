@@ -32,7 +32,7 @@ def collect_local_lineage_tags(
     return {
         "lineage.git_commit": _git_output(project_root, "rev-parse", "HEAD"),
         "lineage.git_dirty": str(bool(_git_output(project_root, "status", "--porcelain"))).lower(),
-        "lineage.dvc_revision": "not_applicable",
+        "lineage.dvc_revision": sha256_file(project_root / "data" / "raw.dvc"),
         "lineage.source_archive_sha256": dataset_config.expected_sha256,
         "lineage.prepared_manifest_sha256": _content_manifest_checksum(project_root),
         "lineage.config_sha256": sha256_file(resolved_config_path),

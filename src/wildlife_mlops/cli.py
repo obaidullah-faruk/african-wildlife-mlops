@@ -323,6 +323,7 @@ def main() -> int:
             manifest_path, checksum_path = create_content_manifest(data_config, Path.cwd())
             print(f"Wrote content manifest: {manifest_path}")
             print(f"Wrote content manifest checksum: {checksum_path}")
+            print("Wrote isolated test manifest: data/manifests/test-content-manifest.json")
         elif args.command == "data-validate":
             validation_result = validate_dataset(data_config, Path.cwd())
             report_path = Path.cwd() / "artifacts" / "validation-report.json"

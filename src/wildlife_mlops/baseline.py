@@ -25,6 +25,9 @@ from wildlife_mlops.data.config import DatasetConfig
 from wildlife_mlops.data.manifest import (
     ContentManifestError,
     load_verified_manifest,
+    load_verified_test_manifest,
+    manifest_image_paths,
+    test_manifest_checksum,
     write_manifest_image_list,
 )
 from wildlife_mlops.data.validate import (
@@ -305,6 +308,8 @@ def _evaluate_model(
     model_factory: Callable[[str], Any],
     evaluation_dir: Path,
     release_artifact: str | None = None,
+    test_manifest_sha256: str | None = None,
+    test_evaluation_reason: str | None = None,
 ) -> Path:
     """Run the shared evaluation procedure for a validation or sealed test split."""
     model = model_factory(str(best_model_path))
@@ -358,6 +363,15 @@ def _evaluate_model(
             "dataset_split": split,
             "release_artifact": release_artifact is not None,
             "release_selection": release_artifact,
+            "test_evaluation_event": (
+                None
+                if test_manifest_sha256 is None
+                else {
+                    "candidate_model_sha256": _sha256_file(best_model_path),
+                    "reason": test_evaluation_reason,
+                    "test_manifest_sha256": test_manifest_sha256,
+                }
+            ),
             "model": {
                 "path": str(best_model_path.relative_to(project_root)),
                 "size_bytes": best_model_path.stat().st_size,
@@ -535,10 +549,12 @@ def evaluate_selected_baseline_on_test(
         raise BaselineError("The selected model checksum no longer matches the frozen release")
     config = _load_saved_config(run_dir / "resolved-config.json")
     evaluation_dir = _create_run_directory(project_root, "release-test")
+    test_manifest = _load_test_manifest(dataset_config, project_root)
     test_data_path = _write_test_evaluation_dataset_config(
         evaluation_dir,
         project_root / dataset_config.dataset_root,
         dataset_config.class_names,
+        manifest_image_paths(test_manifest, project_root, dataset_config, "test"),
     )
     _evaluate_model(
         run_dir,
@@ -552,6 +568,8 @@ def evaluate_selected_baseline_on_test(
         model_factory,
         evaluation_dir,
         release_artifact=str(release_path.relative_to(project_root)),
+        test_manifest_sha256=test_manifest_checksum(project_root),
+        test_evaluation_reason=release["selection_rule"],
     )
     return evaluation_dir
 
@@ -632,7 +650,13 @@ def _load_release_artifact(release_path: Path) -> dict[str, str]:
     except (OSError, json.JSONDecodeError) as error:
         message = f"Invalid selected baseline release artifact: {release_path}"
         raise BaselineError(message) from error
-    required = {"artifact_type", "selected_run_dir", "model_path", "model_sha256"}
+    required = {
+        "artifact_type",
+        "selected_run_dir",
+        "model_path",
+        "model_sha256",
+        "selection_rule",
+    }
     if (
         not isinstance(contents, dict)
         or contents.get("artifact_type") != "phase_2_selected_baseline"
@@ -760,16 +784,20 @@ def _write_dataset_config(
 
 
 def _write_test_evaluation_dataset_config(
-    run_dir: Path, dataset_root: Path, class_names: list[str]
+    run_dir: Path, dataset_root: Path, class_names: list[str], test_images: list[Path]
 ) -> Path:
-    """Write the existing sealed-test definition for the frozen release evaluation."""
+    """Write the sealed-test definition from the isolated test manifest."""
     data_path = run_dir / "dataset.yaml"
+    test_list_path = run_dir / "test-images.txt"
+    test_list_path.write_text(
+        "\n".join(str(path.resolve()) for path in test_images) + "\n", encoding="utf-8"
+    )
     data_path.write_text(
         yaml.safe_dump(
             {
                 "path": str(dataset_root.resolve()),
-                "train": "images/train",
-                "val": "images/test",
+                "train": str(test_list_path.resolve()),
+                "val": str(test_list_path.resolve()),
                 "names": {index: name for index, name in enumerate(class_names)},
             },
             sort_keys=False,
@@ -777,6 +805,14 @@ def _write_test_evaluation_dataset_config(
         encoding="utf-8",
     )
     return data_path
+
+
+def _load_test_manifest(dataset_config: DatasetConfig, project_root: Path) -> dict[str, Any]:
+    """Load the test-only manifest for the frozen release evaluation."""
+    try:
+        return load_verified_test_manifest(dataset_config, project_root)
+    except ContentManifestError as error:
+        raise BaselineError(str(error)) from error
 
 
 def _read_results_csv(results_path: Path) -> list[dict[str, str]]:

@@ -20,6 +20,9 @@ from wildlife_mlops.data.validate import (
 
 CONTENT_MANIFEST_PATH = Path("data/manifests/content-manifest.json")
 CONTENT_MANIFEST_CHECKSUM_PATH = Path("data/manifests/content-manifest.sha256")
+TEST_MANIFEST_PATH = Path("data/manifests/test-content-manifest.json")
+TEST_MANIFEST_CHECKSUM_PATH = Path("data/manifests/test-content-manifest.sha256")
+TRAINING_SPLITS = {"train", "val"}
 
 
 class ContentManifestError(ValueError):
@@ -36,7 +39,7 @@ def create_content_manifest(config: DatasetConfig, project_root: Path) -> tuple[
         _manifest_entry(config, dataset_root, split, image_path)
         for split, image_path in image_paths(dataset_root, config.splits)
     ]
-    manifest = {
+    metadata = {
         "schema_version": 1,
         "source": {
             "archive_sha256": archive_checksum,
@@ -44,21 +47,46 @@ def create_content_manifest(config: DatasetConfig, project_root: Path) -> tuple[
             "url": config.source_url,
         },
         "class_names": config.class_names,
-        "entries": sorted(entries, key=lambda entry: (str(entry["split"]), str(entry["path"]))),
     }
-    manifest_path = project_root / CONTENT_MANIFEST_PATH
-    checksum_path = project_root / CONTENT_MANIFEST_CHECKSUM_PATH
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = _canonical_json(manifest)
-    manifest_path.write_text(payload, encoding="utf-8")
-    checksum_path.write_text(f"{_sha256_bytes(payload.encode('utf-8'))}\n", encoding="utf-8")
+    training_entries = [entry for entry in entries if entry["split"] in TRAINING_SPLITS]
+    test_entries = [entry for entry in entries if entry["split"] == "test"]
+    manifest_path, checksum_path = _write_manifest(
+        project_root,
+        CONTENT_MANIFEST_PATH,
+        CONTENT_MANIFEST_CHECKSUM_PATH,
+        metadata,
+        training_entries,
+    )
+    _write_manifest(
+        project_root, TEST_MANIFEST_PATH, TEST_MANIFEST_CHECKSUM_PATH, metadata, test_entries
+    )
     return manifest_path, checksum_path
 
 
 def load_verified_manifest(config: DatasetConfig, project_root: Path) -> dict[str, Any]:
     """Load the canonical manifest and reject changed or unlisted dataset files."""
-    manifest_path = project_root / CONTENT_MANIFEST_PATH
-    checksum_path = project_root / CONTENT_MANIFEST_CHECKSUM_PATH
+    return _load_verified_manifest(
+        config, project_root, CONTENT_MANIFEST_PATH, CONTENT_MANIFEST_CHECKSUM_PATH, TRAINING_SPLITS
+    )
+
+
+def load_verified_test_manifest(config: DatasetConfig, project_root: Path) -> dict[str, Any]:
+    """Load the isolated test manifest for frozen release evaluation only."""
+    return _load_verified_manifest(
+        config, project_root, TEST_MANIFEST_PATH, TEST_MANIFEST_CHECKSUM_PATH, {"test"}
+    )
+
+
+def _load_verified_manifest(
+    config: DatasetConfig,
+    project_root: Path,
+    manifest_relative_path: Path,
+    checksum_relative_path: Path,
+    allowed_splits: set[str],
+) -> dict[str, Any]:
+    """Load one isolated manifest and verify only its allowed data splits."""
+    manifest_path = project_root / manifest_relative_path
+    checksum_path = project_root / checksum_relative_path
     try:
         payload = manifest_path.read_bytes()
         expected_checksum = checksum_path.read_text(encoding="utf-8").strip()
@@ -75,8 +103,8 @@ def load_verified_manifest(config: DatasetConfig, project_root: Path) -> dict[st
         raise ContentManifestError("Content manifest is not valid JSON") from error
     if not isinstance(raw_manifest, dict):
         raise ContentManifestError("Content manifest must be a JSON object")
-    _verify_manifest_structure(raw_manifest, config)
-    _verify_dataset_files(raw_manifest, config, project_root)
+    _verify_manifest_structure(raw_manifest, config, allowed_splits)
+    _verify_dataset_files(raw_manifest, config, project_root, allowed_splits)
     return raw_manifest
 
 
@@ -95,13 +123,22 @@ def manifest_image_paths(
 
 def manifest_checksum(project_root: Path) -> str:
     """Return the checked checksum recorded beside the content manifest."""
-    checksum_path = project_root / CONTENT_MANIFEST_CHECKSUM_PATH
+    return _manifest_checksum(project_root / CONTENT_MANIFEST_CHECKSUM_PATH, "Content manifest")
+
+
+def test_manifest_checksum(project_root: Path) -> str:
+    """Return the independent immutable checksum for the sealed test manifest."""
+    return _manifest_checksum(project_root / TEST_MANIFEST_CHECKSUM_PATH, "Test manifest")
+
+
+def _manifest_checksum(checksum_path: Path, name: str) -> str:
+    """Read and validate one recorded manifest checksum."""
     try:
         checksum = checksum_path.read_text(encoding="utf-8").strip()
     except OSError as error:
-        raise ContentManifestError("Content manifest checksum is missing") from error
+        raise ContentManifestError(f"{name} checksum is missing") from error
     if len(checksum) != 64 or any(character not in "0123456789abcdef" for character in checksum):
-        raise ContentManifestError("Content manifest checksum is malformed")
+        raise ContentManifestError(f"{name} checksum is malformed")
     return checksum
 
 
@@ -144,7 +181,9 @@ def _manifest_entry(
     }
 
 
-def _verify_manifest_structure(manifest: dict[str, Any], config: DatasetConfig) -> None:
+def _verify_manifest_structure(
+    manifest: dict[str, Any], config: DatasetConfig, allowed_splits: set[str]
+) -> None:
     """Check required manifest metadata before using any listed path."""
     if manifest.get("schema_version") != 1:
         raise ContentManifestError("Unsupported content manifest schema version")
@@ -164,10 +203,16 @@ def _verify_manifest_structure(manifest: dict[str, Any], config: DatasetConfig) 
     entries = manifest.get("entries")
     if not isinstance(entries, list) or not entries:
         raise ContentManifestError("Content manifest entries must be a nonempty list")
+    has_disallowed_split = any(
+        not isinstance(entry, dict) or entry.get("split") not in allowed_splits
+        for entry in entries
+    )
+    if has_disallowed_split:
+        raise ContentManifestError("Content manifest contains a disallowed split")
 
 
 def _verify_dataset_files(
-    manifest: dict[str, Any], config: DatasetConfig, project_root: Path
+    manifest: dict[str, Any], config: DatasetConfig, project_root: Path, allowed_splits: set[str]
 ) -> None:
     """Verify each listed pair and reject any data file absent from the manifest."""
     dataset_root = project_root / config.dataset_root
@@ -183,7 +228,7 @@ def _verify_dataset_files(
         if not isinstance(entry, dict):
             raise ContentManifestError("Content manifest entries must be objects")
         split = entry.get("split")
-        if not isinstance(split, str) or split not in config.splits:
+        if not isinstance(split, str) or split not in allowed_splits:
             raise ContentManifestError("Content manifest contains an unknown split")
         image_path = _safe_dataset_path(dataset_root, entry.get("path"), "image")
         label_path = _safe_dataset_path(dataset_root, entry.get("label_path"), "label")
@@ -198,13 +243,13 @@ def _verify_dataset_files(
         listed_images.add(image_path)
         listed_labels.add(label_path)
 
-    actual_images = {
-        path
-        for _, path in image_paths(dataset_root, config.splits)
+    selected_splits = {
+        split: config.splits[split] for split in allowed_splits if split in config.splits
     }
+    actual_images = {path for _, path in image_paths(dataset_root, selected_splits)}
     actual_labels = {
         path
-        for split in config.splits
+        for split in allowed_splits
         for path in (dataset_root / "labels" / split).rglob("*.txt")
         if (dataset_root / "labels" / split).is_dir()
     }
@@ -263,6 +308,27 @@ def _entries_for_split(manifest: dict[str, Any], split: str) -> Iterable[dict[st
     entries = manifest["entries"]
     assert isinstance(entries, list)
     return [entry for entry in entries if isinstance(entry, dict) and entry["split"] == split]
+
+
+def _write_manifest(
+    project_root: Path,
+    manifest_relative_path: Path,
+    checksum_relative_path: Path,
+    metadata: dict[str, object],
+    entries: list[dict[str, object]],
+) -> tuple[Path, Path]:
+    """Write one canonical split-specific manifest and its checksum."""
+    manifest = {
+        **metadata,
+        "entries": sorted(entries, key=lambda entry: (str(entry["split"]), str(entry["path"]))),
+    }
+    manifest_path = project_root / manifest_relative_path
+    checksum_path = project_root / checksum_relative_path
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _canonical_json(manifest)
+    manifest_path.write_text(payload, encoding="utf-8")
+    checksum_path.write_text(f"{_sha256_bytes(payload.encode('utf-8'))}\n", encoding="utf-8")
+    return manifest_path, checksum_path
 
 
 def _unlisted_message(kind: str, actual: set[Path], listed: set[Path]) -> str:
