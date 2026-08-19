@@ -3,6 +3,26 @@
 Learn one object-detection lifecycle. The model detects buffalo, elephant,
 rhino, and zebra.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    data[Versioned wildlife dataset] --> validate[Dataset validation]
+    validate --> train[Baseline training]
+    train --> metrics[Validation metrics]
+    train --> checkpoint[best.pt checkpoint]
+    train --> mlflow[Local MLflow]
+    metrics --> candidate[Release candidate]
+    checkpoint --> candidate
+    candidate --> package[Package: checkpoint + inference code]
+    candidate --> approval[Human approval]
+    approval --> sealed[One sealed test evaluation]
+    sealed --> service[FastAPI service\nloads one pinned candidate]
+    client[Local prediction client] --> service
+    service --> response[Prediction JSON\nversion + SHA-256 checksum]
+    response --> rollback[Manual A → B → A rollback evidence]
+```
+
 ## Setup
 
 ```sh
