@@ -1,4 +1,4 @@
-"""Deterministic ground-truth contact sheets for automated review artifacts."""
+"""Small ground-truth contact sheets for visual dataset review."""
 
 from __future__ import annotations
 
@@ -21,39 +21,17 @@ GRID_COLUMNS = 4
 
 
 def create_contact_sheets(config: DatasetConfig, project_root: Path) -> list[Path]:
-    """Render deterministic split, class, and edge-case ground-truth sheets."""
+    """Render one 16-image sheet for each dataset split."""
     dataset_root = project_root / config.dataset_root
     records = _records(config, dataset_root)
-    output_root = project_root / "artifacts" / "ground-truth"
+    output_root = project_root / "artifacts" / "data-preview"
     output_root.mkdir(parents=True, exist_ok=True)
     created: list[Path] = []
 
     for split in config.splits:
         split_records = [record for record in records if record[0] == split]
         selected = sorted(split_records, key=lambda record: _stable_key(record[1]))[:16]
-        created.append(_write_sheet(output_root / f"{split}-sample-grid.png", selected, config))
-
-    for class_id, class_name in enumerate(config.class_names):
-        class_records = [
-            record for record in records if any(box.class_id == class_id for box in record[2])
-        ]
-        selected = sorted(class_records, key=lambda record: _stable_key(record[1]))[:5]
-        created.append(_write_sheet(output_root / f"class-{class_name}.png", selected, config))
-
-    by_smallest = sorted(records, key=lambda record: _smallest_box_area(record[2]))[:16]
-    by_largest = sorted(records, key=lambda record: _largest_box_area(record[2]), reverse=True)[:16]
-    by_crowded = sorted(records, key=lambda record: len(record[2]), reverse=True)[:16]
-    by_aspect = sorted(
-        records, key=lambda record: abs(_image_aspect_ratio(record[1]) - 1), reverse=True
-    )[:16]
-    created.extend(
-        [
-            _write_sheet(output_root / "smallest-boxes.png", by_smallest, config),
-            _write_sheet(output_root / "largest-boxes.png", by_largest, config),
-            _write_sheet(output_root / "crowded-images.png", by_crowded, config),
-            _write_sheet(output_root / "unusual-aspect-ratios.png", by_aspect, config),
-        ]
-    )
+        created.append(_write_sheet(output_root / f"{split}.png", selected, config))
     return created
 
 
@@ -112,18 +90,3 @@ def _stable_key(path: Path) -> str:
     """Return a deterministic content-independent order for contact sheets."""
     return hashlib.sha256(path.as_posix().encode()).hexdigest()
 
-
-def _smallest_box_area(boxes: list[BoundingBox]) -> float:
-    """Return the smallest normalized box area, treating empty images as largest."""
-    return min((box.width * box.height for box in boxes), default=float("inf"))
-
-
-def _largest_box_area(boxes: list[BoundingBox]) -> float:
-    """Return the largest normalized box area, treating empty images as zero."""
-    return max((box.width * box.height for box in boxes), default=0.0)
-
-
-def _image_aspect_ratio(path: Path) -> float:
-    """Return image width divided by height."""
-    with Image.open(path) as image:
-        return float(image.width) / float(image.height)

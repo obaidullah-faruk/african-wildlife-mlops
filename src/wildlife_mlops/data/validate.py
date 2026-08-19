@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
-from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -46,7 +44,6 @@ class ValidationResult:
     label_count: int
     box_count: int
     issues: list[ValidationIssue]
-    duplicate_hashes: dict[str, list[str]]
 
     @property
     def passed(self) -> bool:
@@ -64,7 +61,6 @@ class ValidationResult:
             "box_count": self.box_count,
             "issue_count": len(self.issues),
             "issues": [asdict(issue) for issue in self.issues],
-            "exact_duplicate_groups": self.duplicate_hashes,
         }
 
 
@@ -142,12 +138,11 @@ def parse_yolo_label(
 
 
 def validate_dataset(config: DatasetConfig, project_root: Path) -> ValidationResult:
-    """Validate image decoding, label pairing, boxes, and exact duplicate content."""
+    """Validate image decoding, label pairing, and normalized YOLO boxes."""
     dataset_root = project_root / config.dataset_root
     issues: list[ValidationIssue] = []
     boxes_total = 0
     labels_seen: set[Path] = set()
-    content_hashes: dict[str, list[str]] = defaultdict(list)
     image_list = image_paths(dataset_root, config.splits)
 
     for split, image_path in image_list:
@@ -157,7 +152,6 @@ def validate_dataset(config: DatasetConfig, project_root: Path) -> ValidationRes
                 image.verify()
         except (OSError, UnidentifiedImageError) as error:
             issues.append(ValidationIssue("image_decode", str(relative_image_path), str(error)))
-        content_hashes[_sha256(image_path)].append(f"{split}/{relative_image_path}")
 
         label_path = label_path_for_image(dataset_root, split, image_path)
         if not label_path.is_file():
@@ -183,10 +177,7 @@ def validate_dataset(config: DatasetConfig, project_root: Path) -> ValidationRes
             )
         )
 
-    duplicates = {
-        digest: paths for digest, paths in sorted(content_hashes.items()) if len(paths) > 1
-    }
-    return ValidationResult(len(image_list), len(all_labels), boxes_total, issues, duplicates)
+    return ValidationResult(len(image_list), len(all_labels), boxes_total, issues)
 
 
 def write_validation_report(result: ValidationResult, destination: Path) -> None:
@@ -196,20 +187,3 @@ def write_validation_report(result: ValidationResult, destination: Path) -> None
         json.dumps(result.as_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
 
-
-def _sha256(path: Path) -> str:
-    """Calculate a content hash for exact-duplicate detection."""
-    digest = hashlib.sha256()
-    with path.open("rb") as file_handle:
-        for chunk in iter(lambda: file_handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def count_boxes_by_class(label_paths: list[Path], class_count: int) -> Counter[int]:
-    """Count valid boxes by class for inventory output."""
-    counts: Counter[int] = Counter()
-    for label_path in label_paths:
-        boxes, _ = parse_yolo_label(label_path, class_count)
-        counts.update(box.class_id for box in boxes)
-    return counts

@@ -20,7 +20,6 @@ def test_validator_reports_exact_row_for_out_of_bounds_box(tmp_path: Path) -> No
         expected_sha256="0" * 64,
         class_names=["buffalo"],
         splits={"train": 1},
-        smoke_subset_size=16,
         test_split_sealed=True,
     )
 

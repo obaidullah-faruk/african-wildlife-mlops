@@ -9,10 +9,8 @@ description = "A local-first wildlife detection MLOps lab."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
-  "ImageHash>=4.3,<5",
   "Pillow>=11,<12",
   "pydantic>=2.10,<3",
-  "pyarrow>=18,<24",
   "PyYAML>=6.0.2,<7",
   "torch>=2.6,<3",
   "ultralytics==8.4.0",
@@ -53,7 +51,3 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.11"
 strict = true
 files = ["src", "tests"]
-
-[[tool.mypy.overrides]]
-module = ["pyarrow", "pyarrow.*"]
-ignore_missing_imports = true

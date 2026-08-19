@@ -13,5 +13,4 @@ splits:
   train: 1052
   val: 225
   test: 227
-smoke_subset_size: 24
 test_split_sealed: true

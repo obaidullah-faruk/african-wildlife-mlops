@@ -82,6 +82,9 @@ def run_pretrained_inference(
         conf=config.confidence_threshold,
         save=False,
         verbose=False,
+        project=str(output_dir),
+        name=".ultralytics-predict",
+        exist_ok=True,
     )
     if len(results) != len(sample_paths):
         raise PretrainedInferenceError(

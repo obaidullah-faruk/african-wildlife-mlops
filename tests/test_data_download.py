@@ -45,6 +45,5 @@ def _config(source_url: str, checksum: str) -> DatasetConfig:
         expected_sha256=checksum,
         class_names=["buffalo"],
         splits={"train": 1},
-        smoke_subset_size=16,
         test_split_sealed=True,
     )

@@ -1,205 +1,72 @@
 # Wildlife MLOps
 
-An MLOps project for detecting buffalo, elephant, rhino, and zebra in images.
+Learn one object-detection lifecycle. The model detects buffalo, elephant,
+rhino, and zebra.
 
 ## Setup
 
 ```sh
 make bootstrap
-```
-
-## Development checks
-
-```sh
 make doctor
-make device-info
-make train-overfit
-make train-smoke
-make train-baseline
-make run-experiment BASELINE_RUN=artifacts/baseline/<run-directory>
-make evaluate-release-test
-make lint
-make typecheck
-make test
 ```
 
-## Local experiment tracking
-
-Create your local Compose credentials once. The values stay in `.env`.
-
-```sh
-cp .env.example .env
-```
-
-Start MLflow, PostgreSQL, and MinIO. The MLflow server proxies artifact uploads
-to MinIO, so training clients only need the MLflow address.
-
-```sh
-make mlflow-up
-make mlflow-smoke
-```
-
-`mlflow-smoke` creates a tiny tracked run and uploads `smoke.txt` through the
-MLflow artifact proxy. This verifies both PostgreSQL and MinIO.
-
-Verify where each kind of MLflow data lives. The command writes a 1 MiB test
-artifact, queries PostgreSQL, lists the matching MinIO object, recreates only
-the MLflow container, and downloads the artifact again.
-
-```sh
-make mlflow-storage-verify
-```
-
-Inspect `artifacts/mlflow-storage-verification/storage-verification.json`.
-
-Practice a complete local maintenance exercise. It creates a known run, records
-the MLflow version, backs up PostgreSQL and MinIO, runs the database upgrade,
-restores both backups, and verifies the known run and its artifact.
-
-```sh
-make mlflow-maintenance
-```
-
-The backup and report are written under `artifacts/mlflow-maintenance/`.
-
-To observe a partial MLflow run, start MLflow with an invalid MinIO credential.
-Run one smoke training command. It should report that metrics were logged while
-the artifact upload failed. Restore the normal server immediately afterwards.
-
-```sh
-make mlflow-break-artifacts
-make train-smoke
-make mlflow-up
-```
-
-Run the tracked smoke training and then open
-<http://127.0.0.1:5001>. Select the `wildlife-smoke` experiment and inspect the
-parameters, terminal metrics, and `training-output` artifacts.
-
-```sh
-make train-smoke
-```
-
-PostgreSQL stores MLflow metadata. MinIO stores artifacts. Browse MinIO at
-<http://127.0.0.1:9001> using the credentials from `.env`.
-
-Stop the local stack without deleting its named volumes:
-
-```sh
-make mlflow-down
-```
-
-MLflow records aggregate epoch metrics with zero-based MLflow steps: `epoch`,
-`train/<loss>`, `learning_rate/group_<n>`, and
-`validation/{precision,recall,map50,map50_95}`. These names deliberately avoid
-per-class metric series.
-
-Each tracked run also carries MLflow tags that identify its Git state, data source,
-configuration, base weights, local runtime, and trigger. `not_applicable` means
-the local run did not use DVC, a prepared-data manifest, or a training container.
-
-## Comparing a baseline and variant
-
-Start MLflow first. Then train and validate a tracked baseline. Its output folder
-contains `mlflow-run.json`, which links it to its MLflow run.
-
-```sh
-make train-baseline
-make evaluate-baseline RUN_DIR=artifacts/baseline/<run-directory>
-make run-experiment BASELINE_RUN=artifacts/baseline/<run-directory>
-```
-
-Both runs appear in `wildlife-baseline-comparison`. The controlled variant changes
-only image size. The command writes `mlflow-api-comparison.json` beside the local
-comparison report. The selected MLflow run receives `selection.status` and
-`selection.reason` tags. Selection is not a production promotion.
-
-## Data commands
+## Learn the data
 
 ```sh
 make data-download
-make data-inventory
 make data-validate
-make data-content-manifest
 make data-visualize
-make data-audit-splits
-make data-smoke-manifest
 ```
 
-Run `make data-content-manifest` after inspecting validation results. It records
-each image and label checksum, dimensions, class counts, source, and license reference.
-Training verifies this manifest and uses its explicit image lists.
+Open `artifacts/data-preview/train.png`. Check that the boxes match the animals.
 
-## Dataset tracking
-
-Raw dataset content is tracked by DVC. Git stores the small pointer instead.
-
-```sh
-uv run dvc status
-sed -n '1,160p' data/raw.dvc
-```
-
-`dvc status` should report that data and pipelines are up to date.
-
-## Pretrained prediction
+## Learn training
 
 ```sh
 make predict-pretrained
+make train-overfit
+make train-smoke
+make train-baseline
 ```
 
-## Single-image prediction
+Each training command creates a new directory under `artifacts/`. Open its
+`results.csv`, `run.json`, and `weights/best.pt`.
+
+`train-overfit` uses a few images twice. Inspect whether its loss falls.
+`train-smoke` proves the full training path works quickly. `train-baseline`
+uses the whole training split.
+
+## Track a run
+
+Copy the example credentials once, then start local MLflow.
+
+```sh
+cp .env.example .env
+make mlflow-up
+make mlflow-smoke
+make train-tracked
+```
+
+Open <http://127.0.0.1:5001>. A tracked run stores parameters, final metrics,
+and its output files. Stop the services with `make mlflow-down`.
+
+## Version data
+
+DVC tracks the dataset contents. Git tracks the small `data/raw.dvc` pointer.
+
+```sh
+uv run dvc status
+```
+
+The `run.json` file records the source archive checksum and DVC pointer checksum.
+
+## Predict one image
 
 ```sh
 make predict \
-  MODEL=artifacts/experiment/<run>/weights/best.pt \
+  MODEL=artifacts/baseline/<run>/weights/best.pt \
   IMAGE=data/raw/african-wildlife/images/val/<image>.jpg \
-  OUTPUT=artifacts/predictions/<image>.json
-
-  # Sample
-make predict \
-  MODEL=artifacts/experiment/experiment-20260817T185952Z-2fdb4d0f/weights/best.pt \
-  IMAGE='data/raw/african-wildlife/images/val/1 (288).jpg' \
-  OUTPUT=artifacts/predictions/zebra-prediction.json
+  OUTPUT=artifacts/prediction.json
 ```
 
-The command accepts JPEG and PNG inputs, validates image decoding, and refuses to
-overwrite an existing output. Each result records the model version and SHA-256.
-
-## Baseline evaluation
-
-```sh
-make evaluate-baseline RUN_DIR=artifacts/baseline/<run-directory>
-```
-
-`weights/best.pt` is selected by validation mAP50-95, not by the final epoch.
-More epochs are useful only while validation quality improves; falling training loss
-alongside plateauing or declining validation quality is evidence of overfitting.
-
-`run-experiment` changes only the configured image size, compares the same validation
-metric, and freezes the selected checkpoint. `evaluate-release-test` accepts only that
-frozen selection and refuses a second test evaluation for it.
-
-## Prediction schema
-
-```json
-{
-  "image_id": "camera-001.jpg",
-  "boxes": [
-    {
-      "x_min": 0.12,
-      "y_min": 0.20,
-      "x_max": 0.60,
-      "y_max": 0.88,
-      "class": "elephant",
-      "confidence": 0.97
-    }
-  ],
-  "model_version": "immutable-model-identifier",
-  "model_sha256": "immutable-model-checksum",
-  "trace_id": "request-trace-identifier",
-  "timestamp": "2026-08-17T12:00:00Z"
-}
-```
-
-Coordinates are normalized to the range 0–1. `model_version` identifies the
-model that generated the prediction.
+The JSON result includes normalized boxes and the model checksum.

@@ -1,1 +1,1 @@
-"""Dataset download, validation, inventory, and split-audit utilities."""
+"""Dataset download, validation, and visual-review utilities."""

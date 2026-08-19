@@ -21,7 +21,6 @@ class DatasetConfig(BaseModel):
     expected_sha256: str = Field(pattern="^[0-9a-f]{64}$")
     class_names: list[str] = Field(min_length=1)
     splits: dict[str, int] = Field(min_length=1)
-    smoke_subset_size: int = Field(ge=16, le=32)
     test_split_sealed: bool
 
 
