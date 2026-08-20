@@ -30,7 +30,7 @@ class FakeModel:
 
 def test_service_health_and_prediction_prove_pinned_identity(tmp_path: Path) -> None:
     candidate = _candidate(tmp_path, "candidate-a")
-    app = create_app(candidate, FakeModel)
+    app = create_app(candidate, FakeModel, tmp_path / "monitoring", sample_rate=1.0)
 
     with TestClient(app) as client:
         health = client.get("/health")
@@ -39,11 +39,16 @@ def test_service_health_and_prediction_prove_pinned_identity(tmp_path: Path) -> 
             content=_png_bytes(),
             headers={"X-Image-Name": "zebra.png", "Content-Type": "application/octet-stream"},
         )
+        metrics = client.get("/metrics")
 
     assert health.status_code == 200
     assert prediction.status_code == 200
+    assert metrics.status_code == 200
     assert prediction.json()["model_version"] == health.json()["model_version"]
     assert prediction.json()["model_sha256"] == health.json()["model_sha256"]
+    assert "wildlife_http_requests_total" in metrics.text
+    assert "wildlife_predicted_boxes_total" in metrics.text
+    assert (tmp_path / "monitoring" / "prediction-samples.jsonl").is_file()
 
 
 def test_rollback_record_requires_prediction_from_rollback_target(tmp_path: Path) -> None:

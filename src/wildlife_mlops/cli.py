@@ -15,6 +15,11 @@ from wildlife_mlops.data.visualize import create_contact_sheets
 from wildlife_mlops.deployment import DeploymentError, record_rollback
 from wildlife_mlops.device import DeviceSelectionError, collect_device_summary
 from wildlife_mlops.doctor import run_doctor
+from wildlife_mlops.monitoring import (
+    MonitoringError,
+    measure_sampled_quality,
+    record_recovery,
+)
 from wildlife_mlops.predict import PredictionError, predict_image
 from wildlife_mlops.pretrained import (
     PretrainedInferenceError,
@@ -103,6 +108,8 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--candidate", type=Path, required=True)
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--monitoring-dir", type=Path, default=Path("artifacts/monitoring"))
+    serve.add_argument("--sample-rate", type=float, default=0.1)
 
     client = commands.add_parser("send-prediction", help="Send one image to the local API.")
     client.add_argument("--image", type=Path, required=True)
@@ -114,6 +121,22 @@ def build_parser() -> argparse.ArgumentParser:
     rollback.add_argument("--to-candidate", type=Path, required=True)
     rollback.add_argument("--prediction", type=Path, required=True)
     rollback.add_argument("--output", type=Path, required=True)
+
+    quality = commands.add_parser(
+        "measure-sampled-quality", help="Measure quality after sampled ground-truth labels arrive."
+    )
+    quality.add_argument("--samples", type=Path, required=True)
+    quality.add_argument("--labels", type=Path, required=True)
+    quality.add_argument("--output", type=Path, required=True)
+    quality.add_argument("--iou-threshold", type=float, default=0.5)
+
+    recovery = commands.add_parser(
+        "record-recovery", help="Record local failed-deployment recovery."
+    )
+    recovery.add_argument("--failed-candidate", required=True)
+    recovery.add_argument("--recovery-candidate", type=Path, required=True)
+    recovery.add_argument("--health", type=Path, required=True)
+    recovery.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -220,7 +243,9 @@ def main() -> int:
         elif args.command == "serve":
             if not 1 <= args.port <= 65535:
                 raise ValueError("Server port must be between 1 and 65535")
-            run_server(args.candidate, args.host, args.port)
+            run_server(
+                args.candidate, args.host, args.port, args.monitoring_dir, args.sample_rate
+            )
         elif args.command == "send-prediction":
             if args.output.exists():
                 raise ValueError(f"Prediction output already exists: {args.output}")
@@ -233,6 +258,16 @@ def main() -> int:
                 args.from_candidate, args.to_candidate, args.prediction, args.output
             )
             print(f"Rollback evidence: {record}")
+        elif args.command == "measure-sampled-quality":
+            report = measure_sampled_quality(
+                args.samples, args.labels, args.output, args.iou_threshold
+            )
+            print(f"Sampled quality report: {report}")
+        elif args.command == "record-recovery":
+            record = record_recovery(
+                args.failed_candidate, args.recovery_candidate, args.health, args.output
+            )
+            print(f"Recovery evidence: {record}")
         elif args.command.startswith("train-"):
             training = load_training_config(args.train_config)
             device = collect_device_summary(args.device or config.project.runtime.requested_device)
@@ -259,6 +294,7 @@ def main() -> int:
         ReleaseError,
         ClientError,
         DeploymentError,
+        MonitoringError,
         ValueError,
     ) as error:
         print(f"Command failed: {error}")

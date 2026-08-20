@@ -3,9 +3,14 @@ export UV_CACHE_DIR := $(CURDIR)/.uv-cache
 export MPLCONFIGDIR := $(CURDIR)/.matplotlib-cache
 MLFLOW_TRACKING_URI ?= http://127.0.0.1:5001
 RELEASE_TRAIN_CONFIG ?= configs/train/baseline.yaml
+SERVICE_HOST ?= 127.0.0.1
+SERVICE_PORT ?= 8000
+MONITORING_DIR ?= artifacts/monitoring
+SAMPLE_RATE ?= 0.1
+MONITORING_COMPOSE := docker compose -f docker-compose.monitoring.yml
 COMPOSE := docker compose --env-file .env
 
-.PHONY: bootstrap doctor device-info lint typecheck test data-download data-validate data-visualize predict-pretrained predict train-overfit train-smoke train-baseline train-tracked release-candidate register-candidate approve-candidate evaluate-approved serve send-prediction record-rollback mlflow-up mlflow-down mlflow-smoke
+.PHONY: bootstrap doctor device-info lint typecheck test data-download data-validate data-visualize predict-pretrained predict train-overfit train-smoke train-baseline train-tracked release-candidate register-candidate approve-candidate evaluate-approved serve send-prediction record-rollback measure-sampled-quality record-recovery monitoring-up monitoring-down mlflow-up mlflow-down mlflow-smoke
 
 bootstrap:
 	$(UV) sync --all-groups
@@ -70,7 +75,7 @@ evaluate-approved:
 
 serve:
 	@test -n "$(CANDIDATE)" || (echo "CANDIDATE is required"; exit 2)
-	$(UV) run wildlife-mlops serve --candidate "$(CANDIDATE)"
+	$(UV) run wildlife-mlops serve --candidate "$(CANDIDATE)" --host "$(SERVICE_HOST)" --port "$(SERVICE_PORT)" --monitoring-dir "$(MONITORING_DIR)" --sample-rate "$(SAMPLE_RATE)"
 
 send-prediction:
 	@test -n "$(IMAGE)" && test -n "$(OUTPUT)" || (echo "IMAGE and OUTPUT are required"; exit 2)
@@ -79,6 +84,20 @@ send-prediction:
 record-rollback:
 	@test -n "$(FROM_CANDIDATE)" && test -n "$(TO_CANDIDATE)" && test -n "$(PREDICTION)" && test -n "$(OUTPUT)" || (echo "FROM_CANDIDATE, TO_CANDIDATE, PREDICTION, and OUTPUT are required"; exit 2)
 	$(UV) run wildlife-mlops record-rollback --from-candidate "$(FROM_CANDIDATE)" --to-candidate "$(TO_CANDIDATE)" --prediction "$(PREDICTION)" --output "$(OUTPUT)"
+
+measure-sampled-quality:
+	@test -n "$(SAMPLES)" && test -n "$(LABELS)" && test -n "$(OUTPUT)" || (echo "SAMPLES, LABELS, and OUTPUT are required"; exit 2)
+	$(UV) run wildlife-mlops measure-sampled-quality --samples "$(SAMPLES)" --labels "$(LABELS)" --output "$(OUTPUT)"
+
+record-recovery:
+	@test -n "$(FAILED_CANDIDATE)" && test -n "$(RECOVERY_CANDIDATE)" && test -n "$(HEALTH)" && test -n "$(OUTPUT)" || (echo "FAILED_CANDIDATE, RECOVERY_CANDIDATE, HEALTH, and OUTPUT are required"; exit 2)
+	$(UV) run wildlife-mlops record-recovery --failed-candidate "$(FAILED_CANDIDATE)" --recovery-candidate "$(RECOVERY_CANDIDATE)" --health "$(HEALTH)" --output "$(OUTPUT)"
+
+monitoring-up:
+	$(MONITORING_COMPOSE) up -d
+
+monitoring-down:
+	$(MONITORING_COMPOSE) down
 
 mlflow-up:
 	@test -f .env || (echo ".env is required; copy .env.example to .env"; exit 2)

@@ -9,10 +9,10 @@ rhino, and zebra.
 flowchart LR
     data[Versioned wildlife dataset] --> validate[Dataset validation]
     validate --> train[Baseline training]
-    train --> metrics[Validation metrics]
+    train --> validation_metrics[Validation metrics]
     train --> checkpoint[best.pt checkpoint]
     train --> mlflow[Local MLflow]
-    metrics --> candidate[Release candidate]
+    validation_metrics --> candidate[Release candidate]
     checkpoint --> candidate
     candidate --> package[Package: checkpoint + inference code]
     candidate --> approval[Human approval]
@@ -21,6 +21,14 @@ flowchart LR
     client[Local prediction client] --> service
     service --> response[Prediction JSON\nversion + SHA-256 checksum]
     response --> rollback[Manual A → B → A rollback evidence]
+    service --> service_metrics["/metrics/ endpoint"]
+    service_metrics --> prometheus[Prometheus\nscrapes every 5 seconds]
+    prometheus --> grafana[Grafana\nrequest, latency, error, and distribution graphs]
+    response --> samples[Sampled prediction metadata\nno raw images]
+    labels[Later ground-truth labels] --> quality[Sampled precision and recall report]
+    samples --> quality
+    failed[Failed candidate start] --> recovery[Recovery health evidence]
+    service --> recovery
 ```
 
 ## Setup
@@ -190,6 +198,87 @@ make record-rollback \
 
 `record-rollback` checks that the saved response proves model A's checksum was
 active again. Stop MLflow with `make mlflow-down` when you finish.
+
+## Observe the local service
+
+The API exposes Prometheus metrics at `/metrics/`: request count and latency,
+HTTP errors, prediction errors, predicted classes, and confidence distribution.
+For monitoring containers to reach the locally running API, start the service
+on all local interfaces in terminal 1.
+
+```sh
+make serve \
+  CANDIDATE=artifacts/releases/<candidate-a> \
+  SERVICE_HOST=0.0.0.0 \
+  SAMPLE_RATE=1
+```
+
+`SAMPLE_RATE=1` retains every response for this short learning exercise. The
+normal default is `0.1`; samples contain prediction metadata and boxes, never
+the raw image.
+
+In terminal 2, start Prometheus and Grafana, then send a few predictions.
+
+```sh
+make monitoring-up
+curl http://127.0.0.1:8000/metrics/
+```
+
+Open <http://127.0.0.1:9090> to query metrics and
+<http://127.0.0.1:3000> to view the provisioned **Wildlife service** dashboard.
+No sign-in is required. Send predictions after starting the service; request
+and latency panels then update after Prometheus's five-second scrape interval.
+The predicted-class panel stays empty when the model returns no boxes, and an
+empty error-rate panel means no errors have occurred. Samples are written to
+`artifacts/monitoring/prediction-samples.jsonl`.
+
+Only measure model quality after a human or another trusted process supplies
+ground-truth boxes for sampled `trace_id` values. Save one JSON object per line
+in a label file, for example:
+
+```json
+{"trace_id":"copied-from-sample","boxes":[{"class":"zebra","x_min":0.1,"y_min":0.2,"x_max":0.7,"y_max":0.9}]}
+```
+
+Then create the quality report:
+
+```sh
+make measure-sampled-quality \
+  SAMPLES=artifacts/monitoring/prediction-samples.jsonl \
+  LABELS=artifacts/monitoring/ground-truth.jsonl \
+  OUTPUT=artifacts/monitoring/sampled-quality.json
+```
+
+The report records precision and recall only for samples that have matching
+ground truth. It does not treat predictions as labels.
+
+### Practice failed-start recovery
+
+Stop the service with `Ctrl-C`. In terminal 1, deliberately attempt to start a
+missing candidate; it must fail without serving a model.
+
+```sh
+make serve CANDIDATE=artifacts/releases/missing-candidate SERVICE_HOST=0.0.0.0
+```
+
+Restart the known candidate, then in terminal 2 save its health response and
+record recovery evidence.
+
+```sh
+make serve CANDIDATE=artifacts/releases/<candidate-a> SERVICE_HOST=0.0.0.0
+```
+
+```sh
+mkdir -p artifacts/monitoring
+curl --fail --silent http://127.0.0.1:8000/health > artifacts/monitoring/recovery-health.json
+make record-recovery \
+  FAILED_CANDIDATE=artifacts/releases/missing-candidate \
+  RECOVERY_CANDIDATE=artifacts/releases/<candidate-a> \
+  HEALTH=artifacts/monitoring/recovery-health.json \
+  OUTPUT=artifacts/monitoring/recovery-evidence.json
+```
+
+Stop the monitoring containers with `make monitoring-down` when finished.
 
 ## Predict one image
 
